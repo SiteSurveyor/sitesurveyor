@@ -50,6 +50,7 @@ public:
                                     const QString &discipline,
                                     double centerY, double centerX, int srid = 4326);
     Q_INVOKABLE QVariantList getProjects(const QString &discipline = QString());
+    Q_INVOKABLE QVariantList getRecentProjects(int limit = 5);
     Q_INVOKABLE bool loadProject(int projectId);
     Q_INVOKABLE bool deleteProject(int projectId);
     Q_INVOKABLE QString currentProject() const;
@@ -113,6 +114,13 @@ public:
     // Export/Import
     Q_INVOKABLE bool exportToCSV(const QString &filePath);
     Q_INVOKABLE bool importFromCSV(const QString &filePath);
+    
+    // Database Backup/Restore
+    Q_INVOKABLE bool createBackup(const QString &reason = QString());
+    Q_INVOKABLE QString getBackupDirectory() const;
+    Q_INVOKABLE QVariantList listBackups();
+    Q_INVOKABLE bool restoreFromBackup(const QString &backupPath);
+    Q_INVOKABLE bool deleteOldBackups(int keepCount = 10);
 
 signals:
     void connectionChanged();

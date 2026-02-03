@@ -20,11 +20,22 @@ pkg_check_modules(GEOS REQUIRED geos)
 qt_add_executable(SiteSurveyor
     src/main.cpp
     src/database/DatabaseManager.cpp
+    src/database/DatabaseManager.h
     src/analysis/EarthworkEngine.cpp
     src/analysis/EarthworkEngine.h
-    src/database/DatabaseManager.h
-    src/database/DatabaseManager.cpp
-    resources/qml.qrc
+    # New refactored analysis components
+    src/analysis/GDALHelpers.h
+    src/analysis/DTMGenerator.cpp
+    src/analysis/DTMGenerator.h
+    src/analysis/TINProcessor.cpp
+    src/analysis/TINProcessor.h
+    src/analysis/VolumeCalculator.cpp
+    src/analysis/VolumeCalculator.h
+    src/analysis/MeshExporter.cpp
+    src/analysis/MeshExporter.h
+    # Coordinate transformation utilities
+    src/utilities/CoordinateTransformer.cpp
+    src/utilities/CoordinateTransformer.h
     resources/qml.qrc
 )
 

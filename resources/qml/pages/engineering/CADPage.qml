@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Window
 import Qt.labs.platform as Platform
+import "../../components"
 
 Window {
     id: root
@@ -157,6 +158,33 @@ Window {
     Connections {
         target: Database
         function onPointsChanged() { loadPointsFromDB() }
+    }
+
+    // Earthwork error and progress handling
+    Connections {
+        target: Earthwork
+        
+        function onErrorOccurred(error) {
+            errorBanner.show(error)
+            console.error("Earthwork Error:", error)
+        }
+        
+        function onProgressChanged(value) {
+            processingOverlay.progress = value
+        }
+        
+        function onProcessingChanged() {
+            processingOverlay.isProcessing = Earthwork.isProcessing
+            if (!Earthwork.isProcessing) {
+                // Processing finished, reload DTM data if applicable
+                if (dtmData) {
+                    dtmData = Earthwork.getDTMData()
+                    if (dtmData && dtmData.width > 0) {
+                        pointsCanvas.requestPaint()
+                    }
+                }
+            }
+        }
     }
 
     // Loading state (Window doesnt support states property)
@@ -3879,6 +3907,27 @@ Window {
         onAccepted: {
              // Database.refreshPoints() - Removed, using Connections instead
         }
+    }
+
+    // Error Banner - displays Earthwork errors
+    ErrorBanner {
+        id: errorBanner
+        anchors {
+            top: parent.top
+            left: parent.left
+            right: parent.right
+            margins: 10
+        }
+        z: 1000
+        autoHide: true
+        displayDuration: 7000
+    }
+
+    // Processing Overlay - shows DTM generation progress
+    ProcessingOverlay {
+        id: processingOverlay
+        anchors.fill: parent
+        message: "Generating DTM..."
     }
 }
 

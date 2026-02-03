@@ -187,7 +187,8 @@ bool DatabaseManager::createTables()
             center_lon REAL,
             srid INTEGER DEFAULT 4326,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            last_accessed TEXT
         )
     )";
 
@@ -443,8 +444,47 @@ QVariantList DatabaseManager::getProjects(const QString &discipline)
     return projects;
 }
 
+QVariantList DatabaseManager::getRecentProjects(int limit)
+{
+    QVariantList projects;
+    QSqlQuery query(m_db);
+    
+    query.prepare(R"(
+        SELECT id, name, description, discipline, center_lat, center_lon, srid, created_at, last_accessed
+        FROM projects
+        WHERE last_accessed IS NOT NULL
+        ORDER BY last_accessed DESC
+        LIMIT :limit
+    )");
+    query.bindValue(":limit", limit);
+    
+    if (!query.exec()) {
+        qWarning() << "Failed to get recent projects:" << query.lastError().text();
+        return projects;
+    }
+    
+    while (query.next()) {
+        QVariantMap project;
+        project["id"] = query.value(0);
+        project["name"] = query.value(1);
+        project["description"] = query.value(2);
+        project["discipline"] = query.value(3);
+        project["centerY"] = query.value(4);
+        project["centerX"] = query.value(5);
+        project["srid"] = query.value(6);
+        project["createdAt"] = query.value(7);
+        project["lastAccessed"] = query.value(8);
+        projects.append(project);
+    }
+    
+    return projects;
+}
+
 bool DatabaseManager::deleteProject(int projectId)
 {
+    // Create backup before deletion
+    createBackup("before_delete_project");
+    
     QSqlQuery query(m_db);
     query.prepare("DELETE FROM projects WHERE id = :id");
     query.bindValue(":id", projectId);
@@ -485,6 +525,14 @@ bool DatabaseManager::loadProject(int projectId)
     if (query.exec() && query.next()) {
         m_currentProjectId = projectId;
         m_currentProjectName = query.value(0).toString();
+        
+        // Update last accessed time
+        QSqlQuery updateQuery(m_db);
+        updateQuery.prepare("UPDATE projects SET last_accessed = :timestamp WHERE id = :id");
+        updateQuery.bindValue(":timestamp", QDateTime::currentDateTime().toString(Qt::ISODate));
+        updateQuery.bindValue(":id", projectId);
+        updateQuery.exec();
+        
         emit projectChanged();
         emit pointsChanged();
         emit personnelChanged();
@@ -1359,5 +1407,143 @@ bool DatabaseManager::importFromCSV(const QString &filePath)
     }
 
     file.close();
+    return true;
+}
+
+// Database Backup/Restore
+bool DatabaseManager::createBackup(const QString &reason)
+{
+    if (m_dbPath.isEmpty() || !m_db.isOpen()) {
+        emit errorOccurred(tr("No database is currently open"));
+        return false;
+    }
+    
+    // Create backup directory
+    QString backupDir = getBackupDirectory();
+    QDir dir;
+    if (!dir.exists(backupDir)) {
+        if (!dir.mkpath(backupDir)) {
+            emit errorOccurred(tr("Failed to create backup directory"));
+            return false;
+        }
+    }
+    
+    // Generate backup filename with timestamp
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+    QString reasonCopy = reason;
+    QString reasonSuffix = reason.isEmpty() ? "" : "_" + reasonCopy.replace(" ", "_");
+    QString backupFileName = QString("sitesurveyor_%1%2.db").arg(timestamp).arg(reasonSuffix);
+    QString backupPath = backupDir + "/" + backupFileName;
+    
+    // Close database temporarily to copy file
+    QString originalPath = m_dbPath;
+    m_db.close();
+    
+    // Copy database file
+    bool success = QFile::copy(originalPath, backupPath);
+    
+    // Reopen database
+    m_db.setDatabaseName(originalPath);
+    if (!m_db.open()) {
+        emit errorOccurred(tr("Failed to reopen database after backup"));
+        return false;
+    }
+    
+    if (!success) {
+        emit errorOccurred(tr("Failed to create backup file"));
+        return false;
+    }
+    
+    qDebug() << "Database backed up to:" << backupPath;
+    
+    // Clean up old backups
+    deleteOldBackups(10);
+    
+    return true;
+}
+
+QString DatabaseManager::getBackupDirectory() const
+{
+    QString dataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    return dataPath + "/backups";
+}
+
+QVariantList DatabaseManager::listBackups()
+{
+    QVariantList backups;
+    QString backupDir = getBackupDirectory();
+    
+    QDir dir(backupDir);
+    if (!dir.exists()) {
+        return backups;
+    }
+    
+    // Get all .db files sorted by modification time (newest first)
+    QFileInfoList fileList = dir.entryInfoList(QStringList() << "*.db", QDir::Files, QDir::Time);
+    
+    for (const QFileInfo &fileInfo : fileList) {
+        QVariantMap backup;
+        backup["path"] = fileInfo.absoluteFilePath();
+        backup["name"] = fileInfo.fileName();
+        backup["size"] = fileInfo.size();
+        backup["created"] = fileInfo.lastModified().toString(Qt::ISODate);
+        backups.append(backup);
+    }
+    
+    return backups;
+}
+
+bool DatabaseManager::restoreFromBackup(const QString &backupPath)
+{
+    if (!QFile::exists(backupPath)) {
+        emit errorOccurred(tr("Backup file does not exist"));
+        return false;
+    }
+    
+    // Create a safety backup of current database before restoring
+    createBackup("before_restore");
+    
+    QString originalPath = m_dbPath;
+    closeDatabase();
+    
+    // Remove current database
+    QFile::remove(originalPath);
+    
+    // Copy backup to current location
+    bool success = QFile::copy(backupPath, originalPath);
+    
+    if (!success) {
+        emit errorOccurred(tr("Failed to restore from backup"));
+        return false;
+    }
+    
+    // Reopen database
+    if (!openDatabase(originalPath)) {
+        emit errorOccurred(tr("Failed to open restored database"));
+        return false;
+    }
+    
+    qDebug() << "Database restored from:" << backupPath;
+    return true;
+}
+
+bool DatabaseManager::deleteOldBackups(int keepCount)
+{
+    QString backupDir = getBackupDirectory();
+    QDir dir(backupDir);
+    
+    if (!dir.exists()) {
+        return true;
+    }
+    
+    // Get all .db files sorted by modification time (newest first)
+    QFileInfoList fileList = dir.entryInfoList(QStringList() << "*.db", QDir::Files, QDir::Time);
+    
+    // Delete files beyond keepCount
+    for (int i = keepCount; i < fileList.size(); ++i) {
+        QFile::remove(fileList[i].absoluteFilePath());
+        qDebug() << "Deleted old backup:" << fileList[i].fileName();
+    }
+    
     return true;
 }

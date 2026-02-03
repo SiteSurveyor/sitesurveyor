@@ -9,6 +9,7 @@
 #include "database/DatabaseManager.h"
 
 #include "analysis/EarthworkEngine.h"
+#include "utilities/CoordinateTransformer.h"
 
 int main(int argc, char *argv[])
 {
@@ -49,6 +50,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("Database", &dbManager);
     EarthworkEngine earthwork;
     engine.rootContext()->setContextProperty("Earthwork", &earthwork);
+    CoordinateTransformer coordTransform;
+    engine.rootContext()->setContextProperty("CoordTransform", &coordTransform);
 
     const QUrl url(QStringLiteral("qrc:/qml/Main.qml"));
 
