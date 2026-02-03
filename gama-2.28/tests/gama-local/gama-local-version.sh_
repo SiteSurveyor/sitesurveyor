@@ -1,8 +1,0 @@
-#!/bin/sh
-
-set -e
-
-echo Package version @PACKAGE_VERSION@
-@top_builddir@/src/gama-local --version
-
-src/check_version @top_srcdir@/configure.ac @top_srcdir@/CMakeLists.txt

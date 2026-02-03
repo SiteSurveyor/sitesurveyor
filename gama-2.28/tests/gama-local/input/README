@@ -1,4 +1,0 @@
-*.gkf   network configuration input data files
-*.xml   corresponding adjustment results
-
-xml file may be missing for some gkf files
