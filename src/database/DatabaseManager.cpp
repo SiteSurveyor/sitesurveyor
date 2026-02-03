@@ -387,6 +387,29 @@ void DatabaseManager::runMigrations()
             }
         }
     }
+
+    // Migration 3: Add status column to projects table if it doesn't exist
+    {
+        QSqlQuery checkQuery(m_db);
+        checkQuery.exec("PRAGMA table_info(projects)");
+
+        bool hasStatusColumn = false;
+        while (checkQuery.next()) {
+            if (checkQuery.value(1).toString() == "status") {
+                hasStatusColumn = true;
+                break;
+            }
+        }
+
+        if (!hasStatusColumn) {
+            QSqlQuery alterQuery(m_db);
+            if (alterQuery.exec("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'Active'")) {
+                qDebug() << "Migration: Added status column to projects table";
+            } else {
+                qWarning() << "Migration failed: Could not add status column:" << alterQuery.lastError().text();
+            }
+        }
+    }
 }
 
 // Project management
@@ -420,12 +443,28 @@ QVariantList DatabaseManager::getProjects(const QString &discipline)
     QVariantList projects;
     QSqlQuery query(m_db);
 
+    QString sql = R"(
+        SELECT p.id, p.name, p.description, p.discipline, p.center_lat, p.center_lon, 
+               p.srid, p.created_at, p.updated_at, COALESCE(p.status, 'Active') as status,
+               (SELECT COUNT(*) FROM survey_points sp WHERE sp.project_id = p.id) as point_count
+        FROM projects p
+    )";
+
     if (discipline.isEmpty()) {
-        query.exec("SELECT id, name, description, discipline, center_lat, center_lon, srid, created_at FROM projects ORDER BY updated_at DESC");
+        sql += " ORDER BY p.updated_at DESC";
+        if (!query.exec(sql)) {
+            qWarning() << "getProjects query failed:" << query.lastError().text();
+            return projects;
+        }
     } else {
-        query.prepare("SELECT id, name, description, discipline, center_lat, center_lon, srid, created_at FROM projects WHERE discipline = :discipline ORDER BY updated_at DESC");
+        sql += " WHERE p.discipline = :discipline ORDER BY p.updated_at DESC";
+        query.prepare(sql);
         query.bindValue(":discipline", discipline);
-        query.exec();
+        if (!query.exec()) {
+            qWarning() << "getProjects query failed:" << query.lastError().text();
+            qWarning() << "Discipline was:" << discipline;
+            return projects;
+        }
     }
 
     while (query.next()) {
@@ -434,13 +473,17 @@ QVariantList DatabaseManager::getProjects(const QString &discipline)
         project["name"] = query.value(1);
         project["description"] = query.value(2);
         project["discipline"] = query.value(3);
-        project["centerY"] = query.value(4);  // Map to centerY for QML
-        project["centerX"] = query.value(5);  // Map to centerX for QML
+        project["centerY"] = query.value(4);
+        project["centerX"] = query.value(5);
         project["srid"] = query.value(6);
         project["createdAt"] = query.value(7);
+        project["lastAccessed"] = query.value(8);  // Actually updated_at
+        project["status"] = query.value(9);
+        project["pointCount"] = query.value(10);
         projects.append(project);
     }
 
+    qDebug() << "getProjects returning" << projects.count() << "projects for discipline:" << discipline;
     return projects;
 }
 
@@ -501,6 +544,71 @@ bool DatabaseManager::deleteProject(int projectId)
     }
 
     return true;
+}
+
+bool DatabaseManager::deleteProjects(const QVariantList &projectIds)
+{
+    if (projectIds.isEmpty()) {
+        return true;
+    }
+
+    // Create backup before bulk deletion
+    createBackup("before_bulk_delete");
+    
+    m_db.transaction();
+    
+    QSqlQuery query(m_db);
+    query.prepare("DELETE FROM projects WHERE id = :id");
+    
+    for (const QVariant &idVar : projectIds) {
+        int projectId = idVar.toInt();
+        query.bindValue(":id", projectId);
+        
+        if (!query.exec()) {
+            m_db.rollback();
+            emit errorOccurred(tr("Failed to delete projects: %1").arg(query.lastError().text()));
+            return false;
+        }
+        
+        if (m_currentProjectId == projectId) {
+            m_currentProjectId = -1;
+            m_currentProjectName.clear();
+        }
+    }
+    
+    m_db.commit();
+    emit projectChanged();
+    return true;
+}
+
+bool DatabaseManager::updateProjectStatus(int projectId, const QString &status)
+{
+    QSqlQuery query(m_db);
+    query.prepare("UPDATE projects SET status = :status, updated_at = :timestamp WHERE id = :id");
+    query.bindValue(":status", status);
+    query.bindValue(":timestamp", QDateTime::currentDateTime().toString(Qt::ISODate));
+    query.bindValue(":id", projectId);
+    
+    if (!query.exec()) {
+        emit errorOccurred(tr("Failed to update project status: %1").arg(query.lastError().text()));
+        return false;
+    }
+    
+    emit projectChanged();
+    return true;
+}
+
+int DatabaseManager::getPointCountForProject(int projectId)
+{
+    QSqlQuery query(m_db);
+    query.prepare("SELECT COUNT(*) FROM survey_points WHERE project_id = :id");
+    query.bindValue(":id", projectId);
+    
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+    
+    return 0;
 }
 
 QString DatabaseManager::currentDiscipline() const

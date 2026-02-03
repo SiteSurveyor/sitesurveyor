@@ -6,24 +6,19 @@ import QtQuick.Dialogs
 Item {
     id: root
 
-    // --- Personnel Page Style Palette ---
-    property color bgColor: "#ebedef"
+    // Theme
+    property color bgColor: "#f4f6f9"
     property color cardColor: "#ffffff"
     property color accentColor: "#321fdb"
-    property color textPrimary: "#3c4b64"
-    property color textSecondary: "#768192"
-    property color borderColor: "#d8dbe0"
+    property color textPrimary: "#2c384a"
+    property color textSecondary: "#8a94a6"
+    property color borderColor: "#e4e7eb"
     property color successColor: "#2eb85c"
     property color warningColor: "#f9b115"
     property color dangerColor: "#e55353"
     property color infoColor: "#3399ff"
 
-    // Glass Effect Properties
-    property color glassBg: Qt.rgba(1, 1, 1, 0.85)
-    property color glassBorder: Qt.rgba(1, 1, 1, 0.6)
-    property int glassRadius: 8
-
-    // Levelling specific properties
+    // Levelling properties
     property bool isRiseFallMethod: true
     property real startRL: 100.000
     property real closingRL: 100.000
@@ -37,37 +32,27 @@ Item {
     property real totalDistance: 0
     property real misclose: 0
 
-    // Model for observations
-    property var obsModel: ListModel {
-        id: levelModel
-    }
+    // Model
+    ListModel { id: levelModel }
 
-    Component.onCompleted: {
-        resetTable()
-    }
+    Component.onCompleted: resetTable()
 
     function resetTable() {
         levelModel.clear()
         levelModel.append({
-            station: "BM1",
-            bs: 0.000, is: 0.000, fs: 0.000,
-            rise: 0.000, fall: 0.000, hpc: 0.000,
-            rl: startRL,
-            remarks: "Benchmark",
-            distance: 0.000,
-            adjRl: startRL
+            station: "BM1", bs: 0, is: 0, fs: 0,
+            rise: 0, fall: 0, hpc: 0, rl: startRL,
+            remarks: "Benchmark", distance: 0, adjRl: startRL
         })
         calculateLevels()
     }
 
     function calculateLevels() {
-        if (levelModel.count === 0) return;
+        if (levelModel.count === 0) return
 
         var runningRL = startRL
-        var runningHPC = 0
         var tBS = 0, tFS = 0, tRise = 0, tFall = 0
 
-        // Reset first row RL
         levelModel.setProperty(0, "rl", startRL)
         var currentHI = startRL + levelModel.get(0).bs
         levelModel.setProperty(0, "hpc", currentHI)
@@ -81,12 +66,9 @@ Item {
             var cIS = parseFloat(curr.is) || 0
             var cFS = parseFloat(curr.fs) || 0
 
-            tBS += cBS; tFS += cFS;
+            tBS += cBS; tFS += cFS
 
-            var currentReading = 0
-            if (cIS > 0) currentReading = cIS
-            else if (cFS > 0) currentReading = cFS
-
+            var currentReading = cIS > 0 ? cIS : (cFS > 0 ? cFS : 0)
             var diff = lastReading - currentReading
             var rise = diff > 0 ? diff : 0
             var fall = diff < 0 ? -diff : 0
@@ -98,7 +80,7 @@ Item {
             levelModel.setProperty(i, "fall", fall)
             levelModel.setProperty(i, "rl", isRiseFallMethod ? runningRL : rl_HI)
 
-            tRise += rise; tFall += fall;
+            tRise += rise; tFall += fall
 
             if (cFS > 0) {
                 if (cBS > 0) {
@@ -110,344 +92,939 @@ Item {
             } else {
                 lastReading = cIS
             }
-
             levelModel.setProperty(i, "hpc", currentHI)
         }
 
-        // --- Distance & Adjustment ---
-        var tDist = 0
-        var distances = []
-        for (var i = 0; i < levelModel.count; i++) {
-            var d = parseFloat(levelModel.get(i).distance) || 0
+        // Distance & Adjustment
+        var tDist = 0, distances = []
+        for (var j = 0; j < levelModel.count; j++) {
+            var d = parseFloat(levelModel.get(j).distance) || 0
             tDist += d
             distances.push(d)
         }
         totalDistance = tDist
 
-        var closingError = 0
-        if (closingRL !== 0) closingError = runningRL - closingRL
+        var closingError = closingRL !== 0 ? runningRL - closingRL : 0
         misclose = closingError
 
         var cumDist = 0
-        for (var i = 0; i < levelModel.count; i++) {
-            if (i > 0) cumDist += distances[i]
-            var correction = 0
-            if (tDist > 0 && closingRL !== 0) {
-                correction = -(closingError * cumDist / tDist)
-            }
-            var unadjustedRL = levelModel.get(i).rl
-            levelModel.setProperty(i, "adjRl", unadjustedRL + correction)
+        for (var k = 0; k < levelModel.count; k++) {
+            if (k > 0) cumDist += distances[k]
+            var correction = (tDist > 0 && closingRL !== 0) ? -(closingError * cumDist / tDist) : 0
+            levelModel.setProperty(k, "adjRl", levelModel.get(k).rl + correction)
         }
 
-        totalBS = tBS; totalFS = tFS; totalRise = tRise; totalFall = tFall;
+        totalBS = tBS; totalFS = tFS; totalRise = tRise; totalFall = tFall
     }
 
     function addRow() {
         levelModel.append({
-            station: "Stn" + (levelModel.count + 1),
-            bs: 0, is: 0, fs: 0,
-            rise: 0, fall: 0, hpc: 0, rl: 0,
-            remarks: "", distance: 0, adjRl: 0
+            station: "P" + levelModel.count,
+            bs: 0, is: 0, fs: 0, rise: 0, fall: 0,
+            hpc: 0, rl: 0, remarks: "", distance: 0, adjRl: 0
         })
     }
 
-    // --- Background ---
     Rectangle {
         anchors.fill: parent
         color: bgColor
     }
 
-    // --- MAIN CONTENT ---
-    ColumnLayout {
+    RowLayout {
         anchors.fill: parent
-        anchors.margins: 20
-        spacing: 20
+        anchors.margins: 16
+        spacing: 16
 
-        // 1. HEADER (Personnel Style)
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 16
-
-            ColumnLayout {
-                spacing: 4
-                Text {
-                    text: "Levelling Computation"
-                    font.family: "Codec Pro"
-                    font.pixelSize: 24
-                    font.weight: Font.Medium
-                    color: textPrimary
-                }
-                Text {
-                    text: isRiseFallMethod ? "Standard Rise & Fall Method" : "Height of Collimation (HPC) Method"
-                    font.family: "Codec Pro"
-                    font.pixelSize: 13
-                    color: textSecondary
-                }
-            }
-
-            Item { Layout.fillWidth: true }
-
-            // Method Toggle (Moved to Header)
-            Rectangle {
-                width: 162; height: 38; radius: 4; border.color: borderColor
-                color: cardColor
-                Row {
-                    anchors.centerIn: parent
-                    Rectangle {
-                        width: 80; height: 30; radius: 3; color: isRiseFallMethod ? accentColor : "transparent"
-                        Text { anchors.centerIn: parent; text: "Rise & Fall"; color: isRiseFallMethod ? "white" : textSecondary; font.pixelSize: 11; font.family: "Codec Pro"; font.bold: isRiseFallMethod }
-                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { isRiseFallMethod = true; calculateLevels() } }
-                    }
-                    Rectangle {
-                        width: 80; height: 30; radius: 3; color: !isRiseFallMethod ? accentColor : "transparent"
-                        Text { anchors.centerIn: parent; text: "HPC / HI"; color: !isRiseFallMethod ? "white" : textSecondary; font.pixelSize: 11; font.family: "Codec Pro"; font.bold: !isRiseFallMethod }
-                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { isRiseFallMethod = false; calculateLevels() } }
-                    }
-                }
-            }
-
-            // Calculate Button
-            Rectangle {
-                width: 150; height: 38; radius: 4; color: infoColor
-                RowLayout {
-                    anchors.centerIn: parent; spacing: 8
-                    Text { text: "\uf1ec"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 12; color: "white" }
-                    Text { text: "Calculate Adjustment"; font.family: "Codec Pro"; font.pixelSize: 13; color: "white" }
-                }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: calculateLevels() }
-            }
-
-            // Save Button
-            Rectangle {
-                width: 100; height: 38; radius: 4; color: successColor
-                RowLayout {
-                    anchors.centerIn: parent; spacing: 8
-                    Text { text: "\uf0c7"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 12; color: "white" }
-                    Text { text: "Save Line"; font.family: "Codec Pro"; font.pixelSize: 13; color: "white" }
-                }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: console.log("Saving...") }
-            }
-
-            // Add Row Button (Personnel Style)
-            Rectangle {
-                width: 110; height: 38; radius: 4; color: accentColor
-                RowLayout {
-                    anchors.centerIn: parent; spacing: 8
-                    Text { text: "\uf067"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 12; color: "white" }
-                    Text { text: "Add Reading"; font.family: "Codec Pro"; font.pixelSize: 13; color: "white" }
-                }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: addRow() }
-            }
-        }
-
-        // 2. STATS CARDS (Top Summary)
-        RowLayout {
-            Layout.fillWidth: true; spacing: 16
-            property int cardW: (parent.width - 48) / 4
-
-            // Entry Animation
-            opacity: 0
-            transform: Translate {
-                y: 20
-                NumberAnimation on y { to: 0; duration: 500; easing.type: Easing.OutCubic }
-            }
-            NumberAnimation on opacity { to: 1; duration: 500; easing.type: Easing.OutCubic }
-
-            component StatCard : Rectangle {
-                Layout.preferredWidth: parent.cardW; Layout.preferredHeight: 80
-                color: glassBg; radius: glassRadius; border.color: glassBorder
-                property string title; property string value; property string icon; property color iconColor
-                RowLayout {
-                    anchors.fill: parent; anchors.margins: 16; spacing: 16
-                    Rectangle { width: 48; height: 48; radius: 8; color: Qt.lighter(iconColor, 1.8); Text { anchors.centerIn: parent; text: icon; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 20; color: iconColor } }
-                    ColumnLayout {
-                        Text { text: value; font.family: "Codec Pro"; font.pixelSize: 20; font.bold: true; color: textPrimary }
-                        Text { text: title; font.family: "Codec Pro"; font.pixelSize: 12; color: textSecondary }
-                    }
-                }
-            }
-
-            StatCard { title: "Total Distance"; value: totalDistance.toFixed(3) + "m"; icon: "\uf546"; iconColor: infoColor }
-            StatCard { title: "Total Rise"; value: totalRise.toFixed(3) + "m"; icon: "\uf3c5"; iconColor: successColor }
-            StatCard { title: "Total Fall"; value: totalFall.toFixed(3) + "m"; icon: "\uf3c5"; iconColor: warningColor }
-            StatCard { title: "Misclose"; value: misclose.toFixed(3) + "m"; icon: "\uf12a"; iconColor: misclose == 0 ? successColor : dangerColor }
-        }
-
-        // 3. MAIN CONTENT CARD
+        // Left Sidebar - Settings & Summary
         Rectangle {
-            Layout.fillWidth: true
+            Layout.preferredWidth: 280
             Layout.fillHeight: true
-            color: glassBg
-            radius: glassRadius
-            border.color: glassBorder
-
-            // Entry Animation
-            opacity: 0
-            transform: Translate {
-                y: 30
-                SequentialAnimation on y {
-                    PauseAnimation { duration: 150 }
-                    NumberAnimation { to: 0; duration: 600; easing.type: Easing.OutCubic }
-                }
-            }
-            SequentialAnimation on opacity {
-                PauseAnimation { duration: 150 }
-                NumberAnimation { to: 1; duration: 600; easing.type: Easing.OutCubic }
-            }
+            color: cardColor
+            radius: 12
+            border.color: borderColor
+            border.width: 1
 
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 20
-                spacing: 15
+                spacing: 0
 
-                // Toolbar (Inputs)
+                // Header
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 15
+                    spacing: 12
 
-                    TextField {
-                        placeholderText: "Line Name"
-                        placeholderTextColor: textSecondary // Ensure placeholder visibility
-                        text: lineName
-                        color: textPrimary // Ensure text visibility
-                        font.family: "Codec Pro"; font.pixelSize: 13
-                        Layout.preferredWidth: 200
-                        background: Rectangle { border.color: borderColor; border.width: 1; radius: 4 }
-                        onEditingFinished: lineName = text
+                    Rectangle {
+                        width: 40; height: 40; radius: 10
+                        color: Qt.lighter(accentColor, 1.85)
+                        Text {
+                            anchors.centerIn: parent
+                            text: "\uf545"
+                            font.family: "Font Awesome 5 Pro Solid"
+                            font.pixelSize: 16
+                            color: accentColor
+                        }
                     }
 
-                    Rectangle { width: 1; height: 30; color: borderColor }
-
-                    Text { text: "Start RL:"; font.family: "Codec Pro"; font.pixelSize: 12; color: textSecondary }
-                    TextField {
-                        text: startRL.toFixed(3); font.family: "Codec Pro"; font.pixelSize: 13
-                        color: textPrimary // Ensure text visibility
-                        Layout.preferredWidth: 80
-                        background: Rectangle { border.color: borderColor; border.width: 1; radius: 4 }
-                        onEditingFinished: { startRL = parseFloat(text)||0; calculateLevels() }
-                    }
-
-                    Text { text: "Check RL:"; font.family: "Codec Pro"; font.pixelSize: 12; color: textSecondary }
-                    TextField {
-                        text: closingRL.toFixed(3); font.family: "Codec Pro"; font.pixelSize: 13
-                        color: textPrimary // Ensure text visibility
-                        Layout.preferredWidth: 80
-                        background: Rectangle { border.color: borderColor; border.width: 1; radius: 4 }
-                        onEditingFinished: { closingRL = parseFloat(text)||0; calculateLevels() }
+                    ColumnLayout {
+                        spacing: 2
+                        Text {
+                            text: "Level Line"
+                            font.family: "Codec Pro"
+                            font.pixelSize: 16
+                            font.weight: Font.DemiBold
+                            color: textPrimary
+                        }
+                        Text {
+                            text: "Settings & Results"
+                            font.family: "Codec Pro"
+                            font.pixelSize: 11
+                            color: textSecondary
+                        }
                     }
                 }
 
-                // Grid (Excel-like) inside the card
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 16
+                    height: 1
+                    color: borderColor
+                }
+
+                // Line Name
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 16
+                    spacing: 6
+
+                    Text {
+                        text: "Line Name"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 11
+                        font.weight: Font.Medium
+                        color: textSecondary
+                    }
+
+                    TextField {
+                        Layout.fillWidth: true
+                        text: lineName
+                        font.family: "Codec Pro"
+                        font.pixelSize: 13
+                        color: textPrimary
+                        placeholderText: "Enter line name"
+                        placeholderTextColor: Qt.lighter(textSecondary, 1.2)
+                        leftPadding: 12; rightPadding: 12
+                        background: Rectangle {
+                            color: "#f8f9fa"
+                            radius: 6
+                            border.color: parent.activeFocus ? accentColor : borderColor
+                            border.width: parent.activeFocus ? 2 : 1
+                        }
+                        onTextChanged: lineName = text
+                    }
+                }
+
+                // Method Selection
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 16
+                    spacing: 6
+
+                    Text {
+                        text: "Calculation Method"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 11
+                        font.weight: Font.Medium
+                        color: textSecondary
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 40
+                        radius: 8
+                        color: "#f8f9fa"
+                        border.color: borderColor
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            spacing: 4
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 6
+                                color: isRiseFallMethod ? accentColor : "transparent"
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "Rise & Fall"
+                                    font.family: "Codec Pro"
+                                    font.pixelSize: 12
+                                    font.weight: isRiseFallMethod ? Font.DemiBold : Font.Normal
+                                    color: isRiseFallMethod ? "white" : textSecondary
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: { isRiseFallMethod = true; calculateLevels() }
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 6
+                                color: !isRiseFallMethod ? accentColor : "transparent"
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "HPC Method"
+                                    font.family: "Codec Pro"
+                                    font.pixelSize: 12
+                                    font.weight: !isRiseFallMethod ? Font.DemiBold : Font.Normal
+                                    color: !isRiseFallMethod ? "white" : textSecondary
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: { isRiseFallMethod = false; calculateLevels() }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Control Points
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 16
+                    spacing: 6
+
+                    Text {
+                        text: "Control Points"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 11
+                        font.weight: Font.Medium
+                        color: textSecondary
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Text {
+                                text: "Start RL"
+                                font.family: "Codec Pro"
+                                font.pixelSize: 10
+                                color: successColor
+                            }
+                            TextField {
+                                Layout.fillWidth: true
+                                text: startRL.toFixed(3)
+                                font.family: "Codec Pro"
+                                font.pixelSize: 13
+                                color: textPrimary
+                                horizontalAlignment: Text.AlignHCenter
+                                leftPadding: 8; rightPadding: 8
+                                background: Rectangle {
+                                    color: Qt.lighter(successColor, 1.9)
+                                    radius: 6
+                                    border.color: successColor
+                                    border.width: 1
+                                }
+                                onEditingFinished: { startRL = parseFloat(text) || 0; calculateLevels() }
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Text {
+                                text: "Check RL"
+                                font.family: "Codec Pro"
+                                font.pixelSize: 10
+                                color: infoColor
+                            }
+                            TextField {
+                                Layout.fillWidth: true
+                                text: closingRL.toFixed(3)
+                                font.family: "Codec Pro"
+                                font.pixelSize: 13
+                                color: textPrimary
+                                horizontalAlignment: Text.AlignHCenter
+                                leftPadding: 8; rightPadding: 8
+                                background: Rectangle {
+                                    color: Qt.lighter(infoColor, 1.9)
+                                    radius: 6
+                                    border.color: infoColor
+                                    border.width: 1
+                                }
+                                onEditingFinished: { closingRL = parseFloat(text) || 0; calculateLevels() }
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 20
+                    height: 1
+                    color: borderColor
+                }
+
+                // Results Summary
+                Text {
+                    Layout.topMargin: 16
+                    text: "CALCULATION RESULTS"
+                    font.family: "Codec Pro"
+                    font.pixelSize: 10
+                    font.weight: Font.Bold
+                    color: textSecondary
+                    letterSpacing: 1
+                }
+
+                GridLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 12
+                    columns: 2
+                    rowSpacing: 12
+                    columnSpacing: 12
+
+                    // Stat mini cards
+                    Repeater {
+                        model: [
+                            { label: "Total Distance", value: totalDistance.toFixed(3) + " m", icon: "\uf546", color: infoColor },
+                            { label: "Σ Backsight", value: totalBS.toFixed(3), icon: "\uf062", color: successColor },
+                            { label: "Σ Foresight", value: totalFS.toFixed(3), icon: "\uf063", color: warningColor },
+                            { label: "Total Rise", value: totalRise.toFixed(3), icon: "\uf077", color: successColor },
+                            { label: "Total Fall", value: totalFall.toFixed(3), icon: "\uf078", color: dangerColor },
+                            { label: "Misclose", value: misclose.toFixed(4) + " m", icon: "\uf12a", color: Math.abs(misclose) < 0.01 ? successColor : dangerColor }
+                        ]
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 56
+                            radius: 8
+                            color: Qt.lighter(modelData.color, 1.92)
+                            border.color: Qt.lighter(modelData.color, 1.5)
+                            border.width: 1
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 10
+                                spacing: 10
+
+                                Rectangle {
+                                    width: 32; height: 32; radius: 8
+                                    color: Qt.lighter(modelData.color, 1.7)
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData.icon
+                                        font.family: "Font Awesome 5 Pro Solid"
+                                        font.pixelSize: 12
+                                        color: modelData.color
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    spacing: 1
+                                    Text {
+                                        text: modelData.value
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 13
+                                        font.weight: Font.Bold
+                                        color: textPrimary
+                                    }
+                                    Text {
+                                        text: modelData.label
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 9
+                                        color: textSecondary
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillHeight: true }
+
+                // Action Buttons
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Button {
+                        Layout.fillWidth: true
+                        height: 42
+                        text: "Calculate & Adjust"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 13
+                        font.weight: Font.Medium
+
+                        contentItem: RowLayout {
+                            spacing: 8
+                            Item { Layout.fillWidth: true }
+                            Text {
+                                text: "\uf1ec"
+                                font.family: "Font Awesome 5 Pro Solid"
+                                font.pixelSize: 12
+                                color: "white"
+                            }
+                            Text {
+                                text: "Calculate & Adjust"
+                                font.family: "Codec Pro"
+                                font.pixelSize: 13
+                                font.weight: Font.Medium
+                                color: "white"
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+
+                        background: Rectangle {
+                            color: parent.pressed ? Qt.darker(accentColor, 1.1) : (parent.hovered ? Qt.lighter(accentColor, 1.1) : accentColor)
+                            radius: 8
+                        }
+
+                        onClicked: calculateLevels()
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Button {
+                            Layout.fillWidth: true
+                            height: 38
+
+                            contentItem: RowLayout {
+                                spacing: 6
+                                Item { Layout.fillWidth: true }
+                                Text { text: "\uf0c7"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: successColor }
+                                Text { text: "Save"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                                Item { Layout.fillWidth: true }
+                            }
+
+                            background: Rectangle {
+                                color: parent.pressed ? Qt.darker("#f8f9fa", 1.05) : (parent.hovered ? "#f0f2f5" : "#f8f9fa")
+                                radius: 6
+                                border.color: borderColor
+                            }
+
+                            onClicked: console.log("Saving...")
+                        }
+
+                        Button {
+                            Layout.fillWidth: true
+                            height: 38
+
+                            contentItem: RowLayout {
+                                spacing: 6
+                                Item { Layout.fillWidth: true }
+                                Text { text: "\uf1c3"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: infoColor }
+                                Text { text: "Export"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                                Item { Layout.fillWidth: true }
+                            }
+
+                            background: Rectangle {
+                                color: parent.pressed ? Qt.darker("#f8f9fa", 1.05) : (parent.hovered ? "#f0f2f5" : "#f8f9fa")
+                                radius: 6
+                                border.color: borderColor
+                            }
+
+                            onClicked: console.log("Exporting...")
+                        }
+                    }
+                }
+            }
+        }
+
+        // Main Content - Data Table
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: cardColor
+            radius: 12
+            border.color: borderColor
+            border.width: 1
+
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 0
+
+                // Table Header Bar
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 56
+                    color: "transparent"
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 20
+                        anchors.rightMargin: 20
+                        spacing: 12
+
+                        Text {
+                            text: "\uf0ce"
+                            font.family: "Font Awesome 5 Pro Solid"
+                            font.pixelSize: 16
+                            color: accentColor
+                        }
+
+                        ColumnLayout {
+                            spacing: 2
+                            Text {
+                                text: "Level Observations"
+                                font.family: "Codec Pro"
+                                font.pixelSize: 15
+                                font.weight: Font.DemiBold
+                                color: textPrimary
+                            }
+                            Text {
+                                text: levelModel.count + " readings"
+                                font.family: "Codec Pro"
+                                font.pixelSize: 11
+                                color: textSecondary
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Button {
+                            height: 36
+                            contentItem: RowLayout {
+                                spacing: 6
+                                Text { text: "\uf067"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: "white" }
+                                Text { text: "Add Reading"; font.family: "Codec Pro"; font.pixelSize: 12; font.weight: Font.Medium; color: "white" }
+                            }
+                            background: Rectangle {
+                                color: parent.pressed ? Qt.darker(accentColor, 1.1) : (parent.hovered ? Qt.lighter(accentColor, 1.1) : accentColor)
+                                radius: 6
+                            }
+                            leftPadding: 14; rightPadding: 14
+                            onClicked: addRow()
+                        }
+
+                        Button {
+                            height: 36
+                            contentItem: RowLayout {
+                                spacing: 6
+                                Text { text: "\uf2f9"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: dangerColor }
+                                Text { text: "Reset"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                            }
+                            background: Rectangle {
+                                color: parent.pressed ? "#f0f0f0" : (parent.hovered ? "#f8f8f8" : "transparent")
+                                radius: 6
+                                border.color: borderColor
+                            }
+                            leftPadding: 12; rightPadding: 12
+                            onClicked: resetTable()
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: borderColor
+                }
+
+                // Table
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.margins: 16
+                    radius: 8
                     border.color: borderColor
-                    border.width: 1
+                    clip: true
 
                     ColumnLayout {
                         anchors.fill: parent
                         spacing: 0
 
-                        // Header
+                        // Column Headers
                         Rectangle {
-                            Layout.fillWidth: true; height: 40; color: "#f7f9fa" // slightly different header bg
-                            Rectangle { width: parent.width; height: 1; color: borderColor; anchors.bottom: parent.bottom }
+                            Layout.fillWidth: true
+                            height: 44
+                            color: "#f8f9fb"
 
                             RowLayout {
-                                anchors.fill: parent; spacing: 0
-                                component HeaderCell : Rectangle {
-                                    Layout.fillHeight: true; Layout.preferredWidth: w; color: "transparent"
-                                    property int w; property string txt
-                                    Text { anchors.centerIn: parent; text: txt; font.family: "Codec Pro"; font.bold: true; font.pixelSize: 11; color: textSecondary }
-                                    Rectangle { width: 1; height: parent.height; color: borderColor; anchors.right: parent.right }
-                                }
+                                anchors.fill: parent
+                                spacing: 0
 
-                                HeaderCell { w: 40; txt: "#" }
-                                HeaderCell { Layout.fillWidth: true; txt: "Station" }
-                                HeaderCell { w: 80; txt: "Dist" }
-                                HeaderCell { w: 80; txt: "BS" }
-                                HeaderCell { w: 80; txt: "IS" }
-                                HeaderCell { w: 80; txt: "FS" }
-                                HeaderCell { w: 80; visible: isRiseFallMethod; txt: "Rise" }
-                                HeaderCell { w: 80; visible: isRiseFallMethod; txt: "Fall" }
-                                HeaderCell { w: 80; visible: !isRiseFallMethod; txt: "HPC" }
-                                HeaderCell { w: 90; txt: "RL" }
-                                HeaderCell { w: 90; txt: "Adj RL" }
-                                HeaderCell { w: 150; txt: "Remarks" }
-                                HeaderCell { w: 40; txt: "" }
-                            }
-                        }
+                                // Header cell component
+                                component HdrCell: Rectangle {
+                                    Layout.preferredWidth: cellWidth
+                                    Layout.fillWidth: fillW
+                                    Layout.fillHeight: true
+                                    color: "transparent"
+                                    property int cellWidth: 80
+                                    property bool fillW: false
+                                    property string label: ""
+                                    property string sublabel: ""
 
-                        // List
-                        ListView {
-                            Layout.fillWidth: true; Layout.fillHeight: true; clip: true
-                            model: levelModel
-                            boundsBehavior: Flickable.StopAtBounds
-                            delegate: Rectangle {
-                                width: parent.width; height: 35
-                                color: index % 2 === 0 ? "white" : "#fbfcfe" // lighter alternating color
-
-                                RowLayout {
-                                    anchors.fill: parent; spacing: 0
-                                    component Cell : Rectangle {
-                                        Layout.fillHeight: true; Layout.preferredWidth: w; color: "transparent"
-                                        property int w; property alias content: inp.text; property bool ro: false; property alias font: inp.font; property alias textColor: inp.color
-                                        TextInput {
-                                            id: inp; anchors.fill: parent; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-                                            font.pixelSize: 12; font.family: "Codec Pro"; color: textPrimary
-                                            text: parent.content; readOnly: ro; selectByMouse: true
-                                            onEditingFinished: parent.edited(text)
+                                    ColumnLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 1
+                                        Text {
+                                            Layout.alignment: Qt.AlignHCenter
+                                            text: label
+                                            font.family: "Codec Pro"
+                                            font.pixelSize: 11
+                                            font.weight: Font.DemiBold
+                                            color: textPrimary
                                         }
-                                        signal edited(string v)
-                                        Rectangle { width: 1; height: parent.height; color: "#f0f0f0"; anchors.right: parent.right }
+                                        Text {
+                                            Layout.alignment: Qt.AlignHCenter
+                                            visible: sublabel !== ""
+                                            text: sublabel
+                                            font.family: "Codec Pro"
+                                            font.pixelSize: 9
+                                            color: textSecondary
+                                        }
                                     }
-
-                                    Cell { w: 40; content: (index+1).toString(); ro: true; textColor: textSecondary }
-                                    Cell { Layout.fillWidth: true; content: model.station; onEdited: (v)=>levelModel.setProperty(index,"station",v) }
-                                    Cell { w: 80; content: model.distance.toFixed(3); onEdited: (v)=>{levelModel.setProperty(index,"distance",parseFloat(v)||0); calculateLevels()} }
-                                    Cell { w: 80; content: model.bs==0?"":model.bs.toFixed(3); onEdited: (v)=>{levelModel.setProperty(index,"bs",parseFloat(v)||0); calculateLevels()} }
-                                    Cell { w: 80; content: model.is==0?"":model.is.toFixed(3); onEdited: (v)=>{levelModel.setProperty(index,"is",parseFloat(v)||0); calculateLevels()} }
-                                    Cell { w: 80; content: model.fs==0?"":model.fs.toFixed(3); onEdited: (v)=>{levelModel.setProperty(index,"fs",parseFloat(v)||0); calculateLevels()} }
-
-                                    Cell { w: 80; visible: isRiseFallMethod; content: model.rise>0?model.rise.toFixed(3):""; ro: true; textColor: textSecondary }
-                                    Cell { w: 80; visible: isRiseFallMethod; content: model.fall>0?model.fall.toFixed(3):""; ro: true; textColor: textSecondary }
-                                    Cell { w: 80; visible: !isRiseFallMethod; content: model.hpc.toFixed(3); ro: true; textColor: textSecondary }
-
-                                    Cell { w: 90; content: model.rl.toFixed(3); ro: true; font.bold: true }
-                                    Cell { w: 90; content: model.adjRl.toFixed(3); ro: true; font.bold: true; textColor: accentColor }
-                                    Cell { w: 150; content: model.remarks; onEdited: (v)=>levelModel.setProperty(index,"remarks",v) }
 
                                     Rectangle {
-                                        Layout.preferredWidth: 40; Layout.fillHeight: true; color: "transparent"
-                                        Text { anchors.centerIn: parent; text: "×"; color: dangerColor; font.bold: true; font.pixelSize: 16 }
-                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if(levelModel.count>1){levelModel.remove(index);calculateLevels()} }
-                                        Rectangle { width: 1; height: parent.height; color: "#f0f0f0"; anchors.right: parent.right }
+                                        anchors.right: parent.right
+                                        width: 1
+                                        height: parent.height
+                                        color: borderColor
                                     }
                                 }
-                                Rectangle { width: parent.width; height: 1; color: "#f0f0f0"; anchors.bottom: parent.bottom }
+
+                                HdrCell { cellWidth: 45; label: "#" }
+                                HdrCell { fillW: true; label: "Station" }
+                                HdrCell { cellWidth: 75; label: "Dist"; sublabel: "(m)" }
+                                HdrCell { cellWidth: 75; label: "BS" }
+                                HdrCell { cellWidth: 75; label: "IS" }
+                                HdrCell { cellWidth: 75; label: "FS" }
+                                HdrCell { cellWidth: 75; visible: isRiseFallMethod; label: "Rise" }
+                                HdrCell { cellWidth: 75; visible: isRiseFallMethod; label: "Fall" }
+                                HdrCell { cellWidth: 80; visible: !isRiseFallMethod; label: "HPC" }
+                                HdrCell { cellWidth: 90; label: "RL" }
+                                HdrCell { cellWidth: 90; label: "Adj RL" }
+                                HdrCell { fillW: true; label: "Remarks" }
+                                Item { Layout.preferredWidth: 40 }
+                            }
+
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                width: parent.width
+                                height: 1
+                                color: borderColor
                             }
                         }
 
-                        // Footer Summary
+                        // Data Rows
+                        ListView {
+                            id: tableView
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            model: levelModel
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            ScrollBar.vertical: ScrollBar {
+                                policy: ScrollBar.AsNeeded
+                            }
+
+                            delegate: Rectangle {
+                                width: tableView.width
+                                height: 40
+                                color: index % 2 === 0 ? "#ffffff" : "#fafbfc"
+
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    width: parent.width
+                                    height: 1
+                                    color: "#f0f2f5"
+                                }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    spacing: 0
+
+                                    // Data cell component
+                                    component DataCell: Rectangle {
+                                        Layout.preferredWidth: cellWidth
+                                        Layout.fillWidth: fillW
+                                        Layout.fillHeight: true
+                                        color: "transparent"
+                                        property int cellWidth: 80
+                                        property bool fillW: false
+                                        property alias value: cellInput.text
+                                        property bool readOnly: false
+                                        property bool highlight: false
+                                        property color textColor: textPrimary
+                                        property bool bold: false
+                                        signal edited(string newValue)
+
+                                        TextInput {
+                                            id: cellInput
+                                            anchors.fill: parent
+                                            anchors.margins: 4
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                            font.family: "Codec Pro"
+                                            font.pixelSize: 12
+                                            font.bold: bold
+                                            color: readOnly ? textSecondary : textColor
+                                            readOnly: parent.readOnly
+                                            selectByMouse: !readOnly
+                                            onEditingFinished: parent.edited(text)
+
+                                            Rectangle {
+                                                visible: parent.activeFocus && !parent.readOnly
+                                                anchors.fill: parent
+                                                anchors.margins: -2
+                                                color: "transparent"
+                                                border.color: accentColor
+                                                border.width: 2
+                                                radius: 4
+                                                z: -1
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            visible: highlight
+                                            anchors.fill: parent
+                                            color: Qt.lighter(accentColor, 1.95)
+                                            z: -1
+                                        }
+
+                                        Rectangle {
+                                            anchors.right: parent.right
+                                            width: 1
+                                            height: parent.height
+                                            color: "#f0f2f5"
+                                        }
+                                    }
+
+                                    // Row number
+                                    Rectangle {
+                                        Layout.preferredWidth: 45
+                                        Layout.fillHeight: true
+                                        color: "#f8f9fb"
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: index + 1
+                                            font.family: "Codec Pro"
+                                            font.pixelSize: 11
+                                            color: textSecondary
+                                        }
+                                        Rectangle {
+                                            anchors.right: parent.right
+                                            width: 1; height: parent.height
+                                            color: "#f0f2f5"
+                                        }
+                                    }
+
+                                    DataCell {
+                                        fillW: true
+                                        value: model.station
+                                        onEdited: levelModel.setProperty(index, "station", newValue)
+                                    }
+                                    DataCell {
+                                        cellWidth: 75
+                                        value: model.distance.toFixed(3)
+                                        onEdited: { levelModel.setProperty(index, "distance", parseFloat(newValue) || 0); calculateLevels() }
+                                    }
+                                    DataCell {
+                                        cellWidth: 75
+                                        value: model.bs === 0 ? "" : model.bs.toFixed(3)
+                                        textColor: successColor
+                                        onEdited: { levelModel.setProperty(index, "bs", parseFloat(newValue) || 0); calculateLevels() }
+                                    }
+                                    DataCell {
+                                        cellWidth: 75
+                                        value: model.is === 0 ? "" : model.is.toFixed(3)
+                                        onEdited: { levelModel.setProperty(index, "is", parseFloat(newValue) || 0); calculateLevels() }
+                                    }
+                                    DataCell {
+                                        cellWidth: 75
+                                        value: model.fs === 0 ? "" : model.fs.toFixed(3)
+                                        textColor: warningColor
+                                        onEdited: { levelModel.setProperty(index, "fs", parseFloat(newValue) || 0); calculateLevels() }
+                                    }
+                                    DataCell {
+                                        cellWidth: 75
+                                        visible: isRiseFallMethod
+                                        value: model.rise > 0 ? model.rise.toFixed(3) : ""
+                                        readOnly: true
+                                        textColor: successColor
+                                    }
+                                    DataCell {
+                                        cellWidth: 75
+                                        visible: isRiseFallMethod
+                                        value: model.fall > 0 ? model.fall.toFixed(3) : ""
+                                        readOnly: true
+                                        textColor: dangerColor
+                                    }
+                                    DataCell {
+                                        cellWidth: 80
+                                        visible: !isRiseFallMethod
+                                        value: model.hpc.toFixed(3)
+                                        readOnly: true
+                                    }
+                                    DataCell {
+                                        cellWidth: 90
+                                        value: model.rl.toFixed(3)
+                                        readOnly: true
+                                        bold: true
+                                        textColor: textPrimary
+                                    }
+                                    DataCell {
+                                        cellWidth: 90
+                                        value: model.adjRl.toFixed(3)
+                                        readOnly: true
+                                        bold: true
+                                        highlight: true
+                                        textColor: accentColor
+                                    }
+                                    DataCell {
+                                        fillW: true
+                                        value: model.remarks
+                                        onEdited: levelModel.setProperty(index, "remarks", newValue)
+                                    }
+
+                                    // Delete button
+                                    Rectangle {
+                                        Layout.preferredWidth: 40
+                                        Layout.fillHeight: true
+                                        color: deleteMA.containsMouse ? Qt.lighter(dangerColor, 1.9) : "transparent"
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "\uf1f8"
+                                            font.family: "Font Awesome 5 Pro Solid"
+                                            font.pixelSize: 12
+                                            color: deleteMA.containsMouse ? dangerColor : textSecondary
+                                        }
+
+                                        MouseArea {
+                                            id: deleteMA
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (levelModel.count > 1) {
+                                                    levelModel.remove(index)
+                                                    calculateLevels()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Footer Totals
                         Rectangle {
-                            Layout.fillWidth: true; height: 40; color: "#f8f9fa"
-                            Rectangle { width: parent.width; height: 1; color: borderColor; anchors.top: parent.top }
+                            Layout.fillWidth: true
+                            height: 44
+                            color: "#f0f4f8"
+
+                            Rectangle {
+                                anchors.top: parent.top
+                                width: parent.width
+                                height: 1
+                                color: borderColor
+                            }
 
                             RowLayout {
-                                anchors.fill: parent; spacing: 0
-                                Item { width: 40 }
-                                Item { Layout.fillWidth: true; Text { text: "TOTALS"; anchors.right: parent.right; anchors.rightMargin: 10; font.bold: true; font.family: "Codec Pro"; color: textPrimary } }
-                                Item { width: 80; Text { text: totalDistance.toFixed(3); anchors.centerIn: parent; font.bold: true; color: textPrimary } }
-                                Item { width: 80; Text { text: totalBS.toFixed(3); anchors.centerIn: parent; font.bold: true; color: textPrimary } }
-                                Item { width: 80 }
-                                Item { width: 80; Text { text: totalFS.toFixed(3); anchors.centerIn: parent; font.bold: true; color: textPrimary } }
-                                Item { width: 80; visible: isRiseFallMethod; Text { text: totalRise.toFixed(3); anchors.centerIn: parent; font.bold: true; color: textPrimary } }
-                                Item { width: 80; visible: isRiseFallMethod; Text { text: totalFall.toFixed(3); anchors.centerIn: parent; font.bold: true; color: textPrimary } }
-                                Item { width: 80; visible: !isRiseFallMethod }
-                                Item { width: 90 }
-                                Item { width: 90 }
-                                Item { width: 150 }
-                                Item { width: 40 }
+                                anchors.fill: parent
+                                spacing: 0
+
+                                Rectangle {
+                                    Layout.preferredWidth: 45
+                                    Layout.fillHeight: true
+                                    color: "transparent"
+                                }
+
+                                Item {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    Text {
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 10
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: "TOTALS"
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 11
+                                        font.weight: Font.Bold
+                                        color: textPrimary
+                                    }
+                                }
+
+                                Item {
+                                    Layout.preferredWidth: 75
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: totalDistance.toFixed(3)
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        color: textPrimary
+                                    }
+                                }
+                                Item {
+                                    Layout.preferredWidth: 75
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: totalBS.toFixed(3)
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        color: successColor
+                                    }
+                                }
+                                Item { Layout.preferredWidth: 75 }
+                                Item {
+                                    Layout.preferredWidth: 75
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: totalFS.toFixed(3)
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        color: warningColor
+                                    }
+                                }
+                                Item {
+                                    Layout.preferredWidth: 75
+                                    visible: isRiseFallMethod
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: totalRise.toFixed(3)
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        color: successColor
+                                    }
+                                }
+                                Item {
+                                    Layout.preferredWidth: 75
+                                    visible: isRiseFallMethod
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: totalFall.toFixed(3)
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        color: dangerColor
+                                    }
+                                }
+                                Item { Layout.preferredWidth: 80; visible: !isRiseFallMethod }
+                                Item { Layout.preferredWidth: 90 }
+                                Item { Layout.preferredWidth: 90 }
+                                Item { Layout.fillWidth: true }
+                                Item { Layout.preferredWidth: 40 }
                             }
                         }
                     }
