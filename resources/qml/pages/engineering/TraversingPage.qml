@@ -43,6 +43,8 @@ Item {
 
     Component.onCompleted: initializeTraverse()
 
+    onTraverseModeChanged: sidebarFlickable.contentY = 0
+
     function initializeTraverse() {
         stationsModel.clear()
         stationsModel.append({
@@ -163,11 +165,26 @@ Item {
             radius: 12
             border.color: borderColor
             border.width: 1
+            clip: true
 
-            ColumnLayout {
+            Flickable {
+                id: sidebarFlickable
                 anchors.fill: parent
                 anchors.margins: 20
-                spacing: 0
+                clip: true
+                contentWidth: width
+                contentHeight: sidebarContent.height
+                boundsBehavior: Flickable.StopAtBounds
+
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
+
+                ColumnLayout {
+                    id: sidebarContent
+                    width: sidebarFlickable.width
+                    height: Math.max(implicitHeight, sidebarFlickable.height)
+                    spacing: 0
 
                 // Header
                 RowLayout {
@@ -735,6 +752,7 @@ Item {
                         }
                     }
                 }
+            }
             }
         }
 

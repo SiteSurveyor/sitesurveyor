@@ -37,6 +37,8 @@ Item {
 
     Component.onCompleted: resetTable()
 
+    onIsRiseFallMethodChanged: sidebarFlickable.contentY = 0
+
     function resetTable() {
         levelModel.clear()
         levelModel.append({
@@ -143,11 +145,26 @@ Item {
             radius: 12
             border.color: borderColor
             border.width: 1
+            clip: true
 
-            ColumnLayout {
+            Flickable {
+                id: sidebarFlickable
                 anchors.fill: parent
                 anchors.margins: 20
-                spacing: 0
+                clip: true
+                contentWidth: width
+                contentHeight: sidebarContent.height
+                boundsBehavior: Flickable.StopAtBounds
+
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
+
+                ColumnLayout {
+                    id: sidebarContent
+                    width: sidebarFlickable.width
+                    height: Math.max(implicitHeight, sidebarFlickable.height)
+                    spacing: 0
 
                 // Header
                 RowLayout {
@@ -542,6 +559,7 @@ Item {
                         }
                     }
                 }
+            }
             }
         }
 
