@@ -12,6 +12,73 @@
 #include <QFileInfo>
 #include <QSettings>
 
+namespace {
+bool tableExists(QSqlDatabase &db, const QString &tableName)
+{
+    QSqlQuery query(db);
+    query.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name = :name");
+    query.bindValue(":name", tableName);
+    if (!query.exec()) {
+        qWarning() << "Failed to check for table" << tableName << ":" << query.lastError().text();
+        return false;
+    }
+
+    return query.next();
+}
+
+bool columnExists(QSqlDatabase &db, const QString &tableName, const QString &columnName)
+{
+    QSqlQuery query(db);
+    if (!query.exec(QString("PRAGMA table_info('%1')").arg(tableName))) {
+        qWarning() << "Failed to read table info for" << tableName << ":" << query.lastError().text();
+        return false;
+    }
+
+    while (query.next()) {
+        if (query.value(1).toString() == columnName) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool geometryColumnRegistered(QSqlDatabase &db, const QString &tableName, const QString &columnName)
+{
+    if (!tableExists(db, "geometry_columns")) {
+        return false;
+    }
+
+    QSqlQuery query(db);
+    query.prepare(R"(
+        SELECT 1
+        FROM geometry_columns
+        WHERE f_table_name = :table AND f_geometry_column = :column
+    )");
+    query.bindValue(":table", tableName);
+    query.bindValue(":column", columnName);
+    if (!query.exec()) {
+        qWarning() << "Failed to check geometry_columns for" << tableName << columnName << ":"
+                   << query.lastError().text();
+        return false;
+    }
+
+    return query.next();
+}
+
+bool spatialIndexExists(QSqlDatabase &db, const QString &tableName, const QString &columnName)
+{
+    QSqlQuery query(db);
+    if (query.exec(QString("SELECT CheckSpatialIndex('%1', '%2')").arg(tableName, columnName))
+        && query.next()) {
+        return query.value(0).toInt() == 1;
+    }
+
+    const QString rtreeName = QString("idx_%1_%2").arg(tableName, columnName);
+    return tableExists(db, rtreeName);
+}
+} // namespace
+
 DatabaseManager::DatabaseManager(QObject *parent)
     : QObject(parent)
     , m_currentProjectId(-1)
@@ -43,7 +110,6 @@ bool DatabaseManager::openDatabase(const QString &path)
     }
 
     m_db = QSqlDatabase::addDatabase("QSQLITE", "spatialite_connection");
-    m_db.setConnectOptions("QSQLITE_ENABLE_EXTENSIONS");
     m_db.setDatabaseName(path);
 
     if (!m_db.open()) {
@@ -69,6 +135,7 @@ bool DatabaseManager::openDatabase(const QString &path)
 
 void DatabaseManager::closeDatabase()
 {
+    QString connectionName = m_db.connectionName();
     if (m_db.isOpen()) {
         m_db.close();
     }
@@ -83,8 +150,10 @@ void DatabaseManager::closeDatabase()
     m_currentProjectId = -1;
     m_currentProjectName.clear();
     m_spatialiteLoaded = false;
-
-    QSqlDatabase::removeDatabase("spatialite_connection");
+    m_db = QSqlDatabase();
+    if (!connectionName.isEmpty()) {
+        QSqlDatabase::removeDatabase(connectionName);
+    }
     emit connectionChanged();
 }
 
@@ -174,17 +243,12 @@ bool DatabaseManager::initSpatialite()
         qWarning() << "SpatiaLite init failed:" << query.lastError().text();
         return false;
     }
-
-    // Initialize spatial metadata (ignore 'already exists' errors)
-    if (!query.exec("SELECT InitSpatialMetaData(1)")) {
-        const QString errorText = query.lastError().text();
-        if (!errorText.contains("already exists", Qt::CaseInsensitive)) {
-            if (!query.exec("SELECT InitSpatialMetaData()")) {
-                const QString fallbackError = query.lastError().text();
-                if (!fallbackError.contains("already exists", Qt::CaseInsensitive)) {
-                    qWarning() << "InitSpatialMetaData failed:" << fallbackError;
-                }
-            }
+    const bool hasSpatialRefSys = tableExists(m_db, "spatial_ref_sys");
+    const bool hasGeometryColumns = tableExists(m_db, "geometry_columns");
+    if (!hasSpatialRefSys || !hasGeometryColumns) {
+        if (!query.exec("SELECT InitSpatialMetaData(1)")) {
+            qWarning() << "InitSpatialMetaData failed:" << query.lastError().text();
+            return false;
         }
     }
 
@@ -233,15 +297,6 @@ bool DatabaseManager::createTables()
         )
     )";
 
-    // Create spatial index for points if SpatiaLite is available
-    if (m_spatialiteLoaded) {
-        statements << R"(
-            SELECT AddGeometryColumn('survey_points', 'geom', 4326, 'POINT', 'XYZ', 1)
-        )";
-        statements << R"(
-            SELECT CreateSpatialIndex('survey_points', 'geom')
-        )";
-    }
 
     // Personnel table
     statements << R"(
@@ -345,6 +400,41 @@ bool DatabaseManager::createTables()
             // Ignore errors for spatial columns that might already exist
             if (!query.lastError().text().contains("already exists")) {
                 qWarning() << "SQL Error:" << query.lastError().text() << "for:" << sql;
+            }
+        }
+    }
+
+    if (m_spatialiteLoaded) {
+        bool hasGeomColumn = columnExists(m_db, "survey_points", "geom");
+        bool hasGeomMetadata = geometryColumnRegistered(m_db, "survey_points", "geom");
+        if (!hasGeomColumn) {
+            QSqlQuery geomQuery(m_db);
+            if (!geomQuery.exec(R"(
+                SELECT AddGeometryColumn('survey_points', 'geom', 4326, 'POINT', 'XYZ', 1)
+            )")) {
+                qWarning() << "Failed to add geometry column:" << geomQuery.lastError().text();
+            }
+            hasGeomColumn = columnExists(m_db, "survey_points", "geom");
+            hasGeomMetadata = geometryColumnRegistered(m_db, "survey_points", "geom");
+        } else if (!hasGeomMetadata) {
+            QSqlQuery recoverQuery(m_db);
+            if (!recoverQuery.exec(R"(
+                SELECT RecoverGeometryColumn('survey_points', 'geom', 4326, 'POINT', 'XYZ')
+            )")) {
+                qWarning() << "Failed to recover geometry column metadata:"
+                           << recoverQuery.lastError().text();
+            }
+            hasGeomMetadata = geometryColumnRegistered(m_db, "survey_points", "geom");
+        }
+
+        if (hasGeomColumn && hasGeomMetadata) {
+            if (!spatialIndexExists(m_db, "survey_points", "geom")) {
+                QSqlQuery indexQuery(m_db);
+                if (!indexQuery.exec(R"(
+                    SELECT CreateSpatialIndex('survey_points', 'geom')
+                )")) {
+                    qWarning() << "Failed to create spatial index:" << indexQuery.lastError().text();
+                }
             }
         }
     }

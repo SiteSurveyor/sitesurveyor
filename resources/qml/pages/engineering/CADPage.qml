@@ -37,24 +37,14 @@ Window {
         else if (selectedTool === 2) canvasMouseArea.cursorShape = Qt.SizeAllCursor
         else canvasMouseArea.cursorShape = Qt.CrossCursor
 
-        // Auto-clear measurements when changing tools
-        var clean = []
-        var cleared = false
-        for(var i=0; i<drawnShapes.length; i++) {
-             var t = drawnShapes[i].type
-             if (t !== "measure_line" && t !== "measure_poly") {
-                 clean.push(drawnShapes[i])
-             } else {
-                 cleared = true
-             }
-        }
-        if (cleared) {
-            drawnShapes = clean
-            pointsCanvas.requestPaint()
-        }
-        measurePoints = [] // Clear active area points
-        // drawingState active reset is handled in tool logic or irrelevant
+        // Cancel active drafts when switching tools (completed measurements/shapes remain until cleared)
         if (selectedTool !== 10) drawingState = { active: false }
+        if (selectedTool !== 11) measurePoints = []
+        if (selectedTool !== 6) polylineDraftPoints = []
+        if (selectedTool !== 7) polygonDraftPoints = []
+        if (selectedTool !== 12) boundaryDraftPoints = []
+
+        if (pointsCanvas) pointsCanvas.requestPaint()
     }
     // Mouse drag state
     property real lastMouseX: 0
@@ -63,13 +53,87 @@ Window {
     property var selectedPoints: []  // Array of selected point indices
     property var measurePoints: []   // Array of points for active area measurement
 
+    property var polylineDraftPoints: [] // Active polyline points (draft)
+    property var polygonDraftPoints: []  // Active polygon points (draft)
+    property var boundaryDraftPoints: [] // Active boundary points (draft)
+
     property var drawnShapes: []  // Array of {type, points, color, ...}
+
+    // Undo/redo for geometry edits (drawnShapes + boundaryPolygon)
+    property var undoStack: []
+    property var redoStack: []
+    property int maxUndoStates: 30
+
+    function cloneValue(value) {
+        try {
+            return JSON.parse(JSON.stringify(value))
+        } catch (e) {
+            return value
+        }
+    }
+
+    function pushUndoState() {
+        var snapshot = {
+            drawnShapes: cloneValue(drawnShapes) || [],
+            boundaryPolygon: cloneValue(boundaryPolygon) || []
+        }
+
+        var stack = undoStack ? undoStack.slice() : []
+        stack.push(snapshot)
+        if (stack.length > maxUndoStates) stack.shift()
+        undoStack = stack
+        redoStack = []
+    }
+
+    function restoreSnapshot(snapshot) {
+        if (!snapshot) return
+        drawnShapes = snapshot.drawnShapes || []
+        boundaryPolygon = snapshot.boundaryPolygon || []
+        if (pointsCanvas) pointsCanvas.requestPaint()
+    }
+
+    function undo() {
+        if (!undoStack || undoStack.length === 0) return
+        var current = {
+            drawnShapes: cloneValue(drawnShapes) || [],
+            boundaryPolygon: cloneValue(boundaryPolygon) || []
+        }
+        var stack = undoStack.slice()
+        var prev = stack.pop()
+        undoStack = stack
+
+        var redo = redoStack ? redoStack.slice() : []
+        redo.push(current)
+        if (redo.length > maxUndoStates) redo.shift()
+        redoStack = redo
+
+        restoreSnapshot(prev)
+    }
+
+    function redo() {
+        if (!redoStack || redoStack.length === 0) return
+        var current = {
+            drawnShapes: cloneValue(drawnShapes) || [],
+            boundaryPolygon: cloneValue(boundaryPolygon) || []
+        }
+        var redo = redoStack.slice()
+        var next = redo.pop()
+        redoStack = redo
+
+        var stack = undoStack ? undoStack.slice() : []
+        stack.push(current)
+        if (stack.length > maxUndoStates) stack.shift()
+        undoStack = stack
+
+        restoreSnapshot(next)
+    }
     property var contourLines: [] // Array of {elevation, points}
     property var dtmData: null    // DTM raster data for visualization
     property var tinData: null    // TIN mesh data for visualization
     property bool showDTM: true   // Toggle DTM visualization
     property bool showTIN: true   // Toggle TIN visualization
     property bool showGrid: true  // Toggle Grid
+    property bool showPointLabels: true // Toggle point labels
     property string gridMode: "Auto" // "Auto" or "Manual"
     property real manualGridSpacing: 10.0 // Manual spacing in meters
     property bool snapEnabled: true // Toggle Object Snapping
@@ -113,6 +177,9 @@ Window {
         case 3: return "Line"
         case 4: return "Circle"
         case 5: return "Rectangle"
+        case 6: return "Polyline"
+        case 7: return "Polygon"
+        case 12: return "Boundary"
         case 10: return "Measure Distance"
         case 11: return "Measure Area"
         case 30: return "Add Point"
@@ -121,6 +188,235 @@ Window {
     }
 
     property string currentToolName: toolNameForId(selectedTool)
+    // Processing overlay control (avoid splash on CAD entry)
+    property bool processingOverlayEnabled: false
+    property string processingOverlayMessage: "Processing..."
+
+    // Tool models for sidebar organization
+    property var navTools: [
+        {id: 0, icon: "\uf245", name: "Select", tooltip: "Select Tool (V)"},
+        {id: 1, icon: "\uf256", name: "Pan", tooltip: "Pan Tool (H)"},
+        {action: "zoomIn", icon: "\uf00e", name: "Zoom+", tooltip: "Zoom In"},
+        {action: "zoomOut", icon: "\uf010", name: "Zoom-", tooltip: "Zoom Out"},
+        {action: "fit", icon: "\uf31e", name: "Fit", tooltip: "Zoom Extents (Fit All)"},
+        {action: "origin", icon: "\uf015", name: "Origin", tooltip: "Zoom to Origin (0,0)"}
+    ]
+    property var drawTools: [
+        {id: 3, icon: "\uf068", name: "Line", tooltip: "Line (L)"},
+        {id: 4, icon: "\uf111", name: "Circle", tooltip: "Circle (C)"},
+        {id: 5, icon: "\uf0c8", name: "Rect", tooltip: "Rectangle (R)"},
+        {id: 6, icon: "\uf5a9", name: "Pline", tooltip: "Polyline (P)"},
+        {id: 7, icon: "\uf5ee", name: "Poly", tooltip: "Polygon (O)"},
+        {id: 12, icon: "\uf5ee", name: "Bound", tooltip: "Boundary (B)"}
+    ]
+    property var surveyTools: [
+        {id: 10, icon: "\uf547", name: "Dist", tooltip: "Measure Distance (D)"},
+        {id: 11, icon: "\uf5cb", name: "Area", tooltip: "Measure Area (A)"},
+        {action: "cogo", icon: "\uf1de", name: "COGO", tooltip: "Bearing/Distance COGO"},
+        {action: "addPoint", icon: "\uf3c5", name: "Add Pt", tooltip: "Add Control Point"},
+        {action: "pointManager", icon: "\uf0ae", name: "Points", tooltip: "Point Manager"},
+        {action: "buffer", icon: "\uf5ee", name: "Buffer", tooltip: "Create Buffer"}
+    ]
+    property var earthworkTools: [
+        {action: "dtm", icon: "\uf5fd", name: "DTM", tooltip: "Generate DTM"},
+        {action: "contours", icon: "\uf5ee", name: "Cont", tooltip: "Generate Contours"},
+        {action: "tin", icon: "\uf1b2", name: "TIN", tooltip: "Generate TIN"},
+        {action: "volume", icon: "\uf547", name: "Vol", tooltip: "Calculate Volume"},
+        {action: "exportObj", icon: "\uf56d", name: "OBJ", tooltip: "Export DTM OBJ"}
+    ]
+    property var displayTools: [
+        {action: "gridSettings", icon: "\uf009", name: "Grid", tooltip: "Grid Settings"},
+        {action: "crs", icon: "\uf0ac", name: "CRS", tooltip: "Coordinate System"},
+        {action: "options", icon: "\uf013", name: "Opts", tooltip: "CAD Options"}
+    ]
+
+    function startProcessing(message) {
+        processingOverlayMessage = message || "Processing..."
+        processingOverlayEnabled = true
+        if (processingOverlay) processingOverlay.progress = 0
+    }
+
+    function stopProcessing() {
+        processingOverlayEnabled = false
+    }
+
+    function clearTransientStates(clearSelection) {
+        if (clearSelection === undefined) clearSelection = true
+        measurePoints = []
+        drawingState = { active: false }
+        polylineDraftPoints = []
+        polygonDraftPoints = []
+        boundaryDraftPoints = []
+        if (clearSelection) {
+            selectedPoints = []
+            selectedPointIndex = -1
+        }
+
+        var cleanShapes = []
+        for (var s = 0; s < drawnShapes.length; s++) {
+            var t = drawnShapes[s].type
+            if (t !== "measure_line" && t !== "measure_poly") {
+                cleanShapes.push(drawnShapes[s])
+            }
+        }
+        drawnShapes = cleanShapes
+        if (selectionBox) selectionBox.visible = false
+        if (canvasMouseArea) canvasMouseArea.isBoxSelecting = false
+        if (pointsCanvas) pointsCanvas.requestPaint()
+    }
+
+    function openCogoFromSelection() {
+        if (selectedPoints.length === 1 && selectedPoints[0] < importedPoints.count) {
+            var pt = importedPoints.get(selectedPoints[0])
+            cogoDialog.openForPoint(pt)
+        } else {
+            errorBanner.show("Select a single point to start COGO.")
+        }
+    }
+
+    function openPointManager() {
+        pointManagerDialog.open()
+    }
+
+    function generateTIN() {
+        if (importedPoints.count < 3) {
+            errorBanner.show("Need at least 3 points to generate a TIN.")
+            return
+        }
+        startProcessing("Generating TIN...")
+        var pts = []
+        for (var i = 0; i < importedPoints.count; i++) {
+            var p = importedPoints.get(i)
+            pts.push({x: p.x, y: p.y, z: p.z || 0})
+        }
+        console.log("Generating TIN from", pts.length, "points...")
+        var result = Earthwork.generateTIN(pts)
+        if (result.success) {
+            tinData = result
+            console.log("TIN generated:", result.triangleCount, "triangles")
+            pointsCanvas.requestPaint()
+        }
+        if (!Earthwork.isProcessing) stopProcessing()
+    }
+
+    function exportDTMObj() {
+        if (!dtmData) {
+            errorBanner.show("Generate a DTM before exporting.")
+            return
+        }
+        var filename = "dtm_terrain_" + Qt.formatDateTime(new Date(), "yyyyMMdd_hhmmss") + ".obj"
+        var filepath = "/home/project3/Desktop/" + filename
+        console.log("Exporting DTM to OBJ format...")
+        var success = Earthwork.exportDTMasOBJ(filepath, 1.5)
+        if (success) {
+            console.log("✓ DTM exported successfully!")
+            console.log("  File:", filepath)
+        }
+    }
+
+    function handleToolClick(toolData) {
+        if (!toolData) return
+
+        switch (toolData.action) {
+        case "zoomIn":
+            var cx = pointsCanvas.width / 2
+            var cy = pointsCanvas.height / 2
+            var oldWorld = screenToWorld(cx, cy)
+            canvasScale *= 1.2
+            canvasOffsetX = cx - fitOffsetX - oldWorld.x * (fitScale * canvasScale)
+            canvasOffsetY = cy - fitOffsetY + oldWorld.y * (fitScale * canvasScale)
+            pointsCanvas.requestPaint()
+            return
+        case "zoomOut":
+            var ocx = pointsCanvas.width / 2
+            var ocy = pointsCanvas.height / 2
+            var oldW = screenToWorld(ocx, ocy)
+            canvasScale /= 1.2
+            canvasOffsetX = ocx - fitOffsetX - oldW.x * (fitScale * canvasScale)
+            canvasOffsetY = ocy - fitOffsetY + oldW.y * (fitScale * canvasScale)
+            pointsCanvas.requestPaint()
+            return
+        case "fit":
+            recalculateBounds()
+            return
+        case "origin":
+            canvasScale = 1.0
+            canvasOffsetX = (pointsCanvas.width / 2) - fitOffsetX
+            canvasOffsetY = (pointsCanvas.height / 2) - fitOffsetY
+            pointsCanvas.requestPaint()
+            return
+        case "pointManager":
+            openPointManager()
+            return
+        case "cogo":
+            openCogoFromSelection()
+            return
+        case "addPoint":
+            selectedTool = 30
+            addPointDialog.clearFields()
+            addPointDialog.open()
+            return
+        case "buffer":
+            if (selectedPoints.length > 0 || drawnShapes.length > 0) {
+                bufferDialog.open()
+            } else {
+                errorBanner.show("Select a shape to buffer.")
+            }
+            return
+        case "dtm":
+            if (importedPoints.count === 0) {
+                errorBanner.show("Import points before generating a DTM.")
+                return
+            }
+            dtmDialog.open()
+            return
+        case "contours":
+            if (!dtmData) {
+                errorBanner.show("Generate a DTM before contours.")
+                return
+            }
+            contourDialog.open()
+            return
+        case "tin":
+            generateTIN()
+            return
+        case "volume":
+            volumeDialog.open()
+            return
+        case "exportObj":
+            exportDTMObj()
+            return
+        case "gridSettings":
+            gridSettingsDialog.open()
+            return
+        case "crs":
+            crsDialog.open()
+            return
+        case "options":
+            optionsDialog.open()
+            return
+        case "clearDrafts":
+            clearTransientStates(false)
+            return
+        default:
+            break
+        }
+        if (toolData.id === 10) {
+            selectedTool = 10
+            measurePoints = []
+            drawingState = { active: false }
+            return
+        }
+        if (toolData.id === 11) {
+            selectedTool = 11
+            measurePoints = []
+            drawingState = { active: false }
+            return
+        }
+        if (toolData.id !== undefined) {
+            selectedTool = toolData.id
+        }
+    }
 
     // Layers System
     property int activeLayer: 0
@@ -192,12 +488,13 @@ Window {
         }
         
         function onProgressChanged(value) {
-            processingOverlay.progress = value
+            if (processingOverlayEnabled) processingOverlay.progress = value
         }
         
         function onProcessingChanged() {
-            processingOverlay.isProcessing = Earthwork.isProcessing
+            processingOverlay.isProcessing = Earthwork.isProcessing && processingOverlayEnabled
             if (!Earthwork.isProcessing) {
+                stopProcessing()
                 // Processing finished, reload DTM data if applicable
                 if (dtmData) {
                     dtmData = Earthwork.getDTMData()
@@ -209,75 +506,29 @@ Window {
         }
     }
 
-    // Loading state
-    property bool isLoading: true
-    property string loadingMessage: "Loading CAD Environment..."
-    property real loadingProgress: 0.0
-    property int loadingStep: 0
-
     property bool pickingControlPoint: false
-
-    function startCadLoading() {
-        isLoading = true
-        loadingMessage = "Loading CAD Environment..."
-        loadingProgress = 0.0
-        loadingStep = 0
-        loadingSequenceTimer.restart()
-    }
 
     CADOptionsDialog {
         id: optionsDialog
         cadPage: root
     }
 
-    // Staged loading: keeps splash responsive and can be extended later
-    Timer {
-        id: loadingSequenceTimer
-        interval: 1
-        running: false
-        repeat: false
-        onTriggered: {
-            if (loadingStep === 0) {
-                loadingMessage = "Loading points..."
-                loadingProgress = 0.35
-                loadPointsFromDB()
-                loadingStep = 1
-                loadingSequenceTimer.restart()
-                return
-            }
-
-            if (loadingStep === 1) {
-                loadingMessage = "Preparing workspace..."
-                loadingProgress = 0.75
-                loadingStep = 2
-                loadingSequenceTimer.restart()
-                return
-            }
-
-            loadingMessage = "Ready"
-            loadingProgress = 1.0
-            finishLoadingTimer.restart()
-        }
-    }
-
-    Timer {
-        id: finishLoadingTimer
-        interval: 250
-        running: false
-        repeat: false
-        onTriggered: isLoading = false
-    }
-
-    // Start loading when window becomes visible
+    // Refresh when CAD window becomes visible (no splash/loader)
     onVisibleChanged: {
         if (visible) {
-            startCadLoading()
+            processingOverlayEnabled = false
+            if (processingOverlay) processingOverlay.isProcessing = false
+            loadPointsFromDB()
+            if (canvasMouseArea) canvasMouseArea.forceActiveFocus()
         }
     }
 
     Component.onCompleted: {
         if (visible) {
-            startCadLoading()
+            processingOverlayEnabled = false
+            if (processingOverlay) processingOverlay.isProcessing = false
+            loadPointsFromDB()
+            if (canvasMouseArea) canvasMouseArea.forceActiveFocus()
         }
     }
 
@@ -805,11 +1056,16 @@ Window {
 
     // Recalculate Coordinate System Bounds
     function recalculateBounds() {
-        if (importedPoints.count === 0) return
+        if (!pointsCanvas || pointsCanvas.width <= 0 || pointsCanvas.height <= 0)
+            return
+
+        if (importedPoints.count === 0 && (!drawnShapes || drawnShapes.length === 0))
+            return
 
         var minX = 999999999, maxX = -999999999
         var minY = 999999999, maxY = -999999999
 
+        // Include points
         for (var i = 0; i < importedPoints.count; i++) {
             var pt = importedPoints.get(i)
             if (pt.x < minX) minX = pt.x
@@ -818,7 +1074,7 @@ Window {
             if (pt.y > maxY) maxY = pt.y
         }
 
-        // Include Drawn Shapes
+        // Include drawn geometry
         if (drawnShapes && drawnShapes.length > 0) {
             for (var k = 0; k < drawnShapes.length; k++) {
                 var s = drawnShapes[k]
@@ -831,17 +1087,18 @@ Window {
                 } else if (s.type === "rectangle") {
                     minX = Math.min(minX, s.x, s.x + s.w); maxX = Math.max(maxX, s.x, s.x + s.w)
                     minY = Math.min(minY, s.y, s.y + s.h); maxY = Math.max(maxY, s.y, s.y + s.h)
-                } else if ((s.type === "measure_poly" || s.type === "polygon") && s.points) {
-                    for (var p=0; p<s.points.length; p++) {
-                        minX = Math.min(minX, s.points[p].x); maxX = Math.max(maxX, s.points[p].x)
-                        minY = Math.min(minY, s.points[p].y); maxY = Math.max(maxY, s.points[p].y)
+                } else if ((s.type === "measure_poly" || s.type === "polygon" || s.type === "polyline" || s.type === "boundary") && s.points) {
+                    for (var p = 0; p < s.points.length; p++) {
+                        var sp = s.points[p]
+                        minX = Math.min(minX, sp.x); maxX = Math.max(maxX, sp.x)
+                        minY = Math.min(minY, sp.y); maxY = Math.max(maxY, sp.y)
                     }
                 }
             }
         }
 
-        if (minX > maxX) { // No data found
-             minX = -50; maxX = 50; minY = -50; maxY = 50
+        if (minX > maxX) {
+            minX = -50; maxX = 50; minY = -50; maxY = 50
         }
 
         var rangeX = maxX - minX
@@ -1023,111 +1280,11 @@ Window {
         return pointCount
     }
 
-    // ============ SPLASH SCREEN ============
-    Rectangle {
-        id: splashScreen
-        anchors.fill: parent
-        color: "#1A1A1A"  // Very dark background
-        visible: isLoading
-        opacity: isLoading ? 1 : 0
-
-        Behavior on opacity {
-            NumberAnimation { duration: 500; easing.type: Easing.InOutQuad }
-        }
-
-        ColumnLayout {
-            anchors.centerIn: parent
-            spacing: 30
-
-            // Official SiteSurveyor Logo
-            Image {
-                source: "qrc:/logo/SiteSurveyor.png"
-                sourceSize.width: 120
-                sourceSize.height: 120
-                fillMode: Image.PreserveAspectFit
-                Layout.alignment: Qt.AlignHCenter
-
-                SequentialAnimation on opacity {
-                    running: splashScreen.visible
-                    loops: Animation.Infinite
-                    NumberAnimation { from: 1.0; to: 0.6; duration: 800; easing.type: Easing.InOutQuad }
-                    NumberAnimation { from: 0.6; to: 1.0; duration: 800; easing.type: Easing.InOutQuad }
-                }
-            }
-
-            // Loading text
-            Text {
-                text: loadingMessage
-                font.family: "Codec Pro"
-                font.pixelSize: 14
-                font.weight: Font.Medium
-                color: "#FFFFFF"
-                Layout.alignment: Qt.AlignHCenter
-            }
-
-            // Progress
-            ProgressBar {
-                Layout.preferredWidth: 260
-                from: 0
-                to: 1
-                value: loadingProgress
-
-                background: Rectangle {
-                    implicitHeight: 6
-                    radius: 3
-                    color: "#2A2A2A"
-                    border.color: "#3A3A3A"
-                }
-
-                contentItem: Rectangle {
-                    implicitHeight: 6
-                    radius: 3
-                    color: accentColor
-                    width: parent.width * Math.max(0, Math.min(1, loadingProgress))
-                }
-            }
-
-            // Animated spinner
-            Rectangle {
-                width: 40
-                height: 40
-                radius: 20
-                color: "transparent"
-                border.color: accentColor
-                border.width: 3
-                Layout.alignment: Qt.AlignHCenter
-
-                Rectangle {
-                    width: 8
-                    height: 8
-                    radius: 4
-                    color: accentColor
-                    x: parent.width / 2 - 4
-                    y: 2
-                }
-
-                RotationAnimation on rotation {
-                    running: splashScreen.visible
-                    loops: Animation.Infinite
-                    from: 0
-                    to: 360
-                    duration: 1000
-                }
-            }
-        }
-    }
-
     // ============ CAD INTERFACE ============
     Rectangle {
         id: cadInterface
         anchors.fill: parent
         color: bgColor
-        visible: !isLoading
-        opacity: !isLoading ? 1 : 0
-
-        Behavior on opacity {
-            NumberAnimation { duration: 500; easing.type: Easing.InOutQuad }
-        }
 
         ColumnLayout {
             anchors.fill: parent
@@ -1136,21 +1293,55 @@ Window {
             // Top Menu Bar (AutoCAD style)
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 28
+                Layout.preferredHeight: 32
                 color: "#1A1A1A"
                 border.color: "#3A3A3A"
                 border.width: 1
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 5
-                    spacing: 0
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    spacing: 6
+
+                    Rectangle {
+                        width: 36
+                        height: 18
+                        radius: 4
+                        color: accentColor
+                        Layout.alignment: Qt.AlignVCenter
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "CAD"
+                            font.family: "Codec Pro"
+                            font.pixelSize: 9
+                            font.weight: Font.Bold
+                            color: "white"
+                        }
+                    }
+
+                    Text {
+                        text: "Engineering CAD"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 10
+                        color: textPrimary
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    Rectangle {
+                        width: 1
+                        height: 18
+                        color: "#3A3A3A"
+                        Layout.alignment: Qt.AlignVCenter
+                    }
 
                     // File Menu with dropdown
                     Rectangle {
-                        implicitWidth: fileMenuText.implicitWidth + 20
-                        implicitHeight: 28
-                        color: fileMenuMa.containsMouse || fileMenu.visible ? "#3A3A3A" : "transparent"
+                        implicitWidth: fileMenuText.implicitWidth + 22
+                        implicitHeight: 30
+                        radius: 2
+                        color: fileMenuMa.containsMouse || fileMenu.visible ? "#333333" : "transparent"
 
                         Text {
                             id: fileMenuText
@@ -1172,19 +1363,33 @@ Window {
                         Menu {
                             id: fileMenu
                             y: parent.height
+                            background: Rectangle {
+                                color: "#2A2A2A"
+                                border.color: "#4A4A4A"
+                                radius: 4
+                            }
 
-                            MenuItem {
-                                text: "Import CSV"
+                            StyledMenuItem {
+                                text: "Import CSV..."
                                 onTriggered: csvFileDialog.open()
                             }
-                            MenuItem {
-                                text: "Export CSV"
+                            StyledMenuItem {
+                                text: "Export CSV..."
                                 enabled: importedPoints.count > 0
                                 onTriggered: exportCsvDialog.open()
                             }
-                            MenuItem {
-                                text: "Save"
-                                enabled: false
+                            MenuSeparator { }
+                            StyledMenuItem {
+                                text: "Point Manager..."
+                                onTriggered: openPointManager()
+                            }
+                            StyledMenuItem {
+                                text: "Add Control Point..."
+                                onTriggered: handleToolClick({action: "addPoint"})
+                            }
+                            StyledMenuItem {
+                                text: "CRS Settings..."
+                                onTriggered: crsDialog.open()
                             }
                         }
                     }
@@ -1193,9 +1398,10 @@ Window {
 
                     // View Menu
                     Rectangle {
-                        implicitWidth: viewMenuText.implicitWidth + 20
-                        implicitHeight: 28
-                        color: viewMenuMa.containsMouse || viewMenu.visible ? "#3A3A3A" : "transparent"
+                        implicitWidth: viewMenuText.implicitWidth + 22
+                        implicitHeight: 30
+                        radius: 2
+                        color: viewMenuMa.containsMouse || viewMenu.visible ? "#333333" : "transparent"
 
                         Text {
                             id: viewMenuText
@@ -1217,50 +1423,175 @@ Window {
                         Menu {
                             id: viewMenu
                             y: parent.height
+                            background: Rectangle {
+                                color: "#2A2A2A"
+                                border.color: "#4A4A4A"
+                                radius: 4
+                            }
 
-                            MenuItem {
+                            StyledMenuItem {
                                 text: "Grid Settings..."
                                 onTriggered: gridSettingsDialog.open()
                             }
-                            MenuItem {
+                            StyledMenuItem {
                                 text: showGrid ? "Hide Grid" : "Show Grid"
-                                onTriggered: showGrid = !showGrid
+                                checkable: true
+                                checked: showGrid
+                                onTriggered: { showGrid = !showGrid; pointsCanvas.requestPaint() }
                             }
-                            MenuSeparator {}
-                            MenuItem {
+                            StyledMenuItem {
+                                text: snapEnabled ? "Disable Snap" : "Enable Snap"
+                                checkable: true
+                                checked: snapEnabled
+                                onTriggered: { snapEnabled = !snapEnabled }
+                            }
+                            StyledMenuItem {
+                                text: showPointLabels ? "Hide Point Labels" : "Show Point Labels"
+                                checkable: true
+                                checked: showPointLabels
+                                onTriggered: { showPointLabels = !showPointLabels; pointsCanvas.requestPaint() }
+                            }
+                            MenuSeparator { }
+                            StyledMenuItem {
                                 text: showDTM ? "Hide 2D DTM" : "Show 2D DTM"
+                                checkable: true
                                 checked: showDTM
-                                checkable: true
-                                onTriggered: {
-                                    showDTM = !showDTM
-                                    pointsCanvas.requestPaint()
-                                }
+                                onTriggered: { showDTM = !showDTM; pointsCanvas.requestPaint() }
                             }
-                            MenuItem {
+                            StyledMenuItem {
                                 text: showTIN ? "Hide TIN" : "Show TIN"
-                                checked: showTIN
                                 checkable: true
-                                onTriggered: {
-                                    showTIN = !showTIN
-                                    pointsCanvas.requestPaint()
-                                }
+                                checked: showTIN
+                                onTriggered: { showTIN = !showTIN; pointsCanvas.requestPaint() }
+                            }
+                            StyledMenuItem {
+                                text: "Clear Contours"
+                                enabled: contourLines && contourLines.length > 0
+                                onTriggered: { contourLines = []; pointsCanvas.requestPaint() }
                             }
                         }
                     }
 
-                    Repeater {
-                        model: ["Edit", "Insert", "Format", "Tools", "Window"]
+                    // Survey Menu
+                    Rectangle {
+                        implicitWidth: surveyMenuText.implicitWidth + 22
+                        implicitHeight: 30
+                        radius: 2
+                        color: surveyMenuMa.containsMouse || surveyMenu.visible ? "#333333" : "transparent"
 
-                        MenuBarItem {
-                            text: modelData
+                        Text {
+                            id: surveyMenuText
+                            anchors.centerIn: parent
+                            text: "Survey"
+                            font.family: "Codec Pro"
+                            font.pixelSize: 10
+                            color: textPrimary
+                        }
+
+                        MouseArea {
+                            id: surveyMenuMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: surveyMenu.open()
+                        }
+
+                        Menu {
+                            id: surveyMenu
+                            y: parent.height
+                            background: Rectangle {
+                                color: "#2A2A2A"
+                                border.color: "#4A4A4A"
+                                radius: 4
+                            }
+
+                            StyledMenuItem {
+                                text: "Measure Distance"
+                                onTriggered: { selectedTool = 10; measurePoints = []; drawingState = { active: false } }
+                            }
+                            StyledMenuItem {
+                                text: "Measure Area"
+                                onTriggered: { selectedTool = 11; measurePoints = []; drawingState = { active: false } }
+                            }
+                            StyledMenuItem {
+                                text: "COGO (Bearing/Distance)..."
+                                onTriggered: openCogoFromSelection()
+                            }
+                            StyledMenuItem {
+                                text: "Add Control Point..."
+                                onTriggered: handleToolClick({action: "addPoint"})
+                            }
+                            StyledMenuItem {
+                                text: "Point Manager..."
+                                onTriggered: openPointManager()
+                            }
+                            StyledMenuItem {
+                                text: "Create Buffer..."
+                                onTriggered: handleToolClick({action: "buffer"})
+                            }
+                            StyledMenuItem {
+                                text: "Boundary Tool"
+                                onTriggered: selectedTool = 12
+                            }
+                            MenuSeparator { }
+                            StyledMenuItem {
+                                text: "Clear Measurements"
+                                onTriggered: clearTransientStates(false)
+                            }
+                        }
+                    }
+
+                    // Draft Menu
+                    Rectangle {
+                        implicitWidth: draftMenuText.implicitWidth + 22
+                        implicitHeight: 30
+                        radius: 2
+                        color: draftMenuMa.containsMouse || draftMenu.visible ? "#333333" : "transparent"
+
+                        Text {
+                            id: draftMenuText
+                            anchors.centerIn: parent
+                            text: "Draft"
+                            font.family: "Codec Pro"
+                            font.pixelSize: 10
+                            color: textPrimary
+                        }
+
+                        MouseArea {
+                            id: draftMenuMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: draftMenu.open()
+                        }
+
+                        Menu {
+                            id: draftMenu
+                            y: parent.height
+                            background: Rectangle {
+                                color: "#2A2A2A"
+                                border.color: "#4A4A4A"
+                                radius: 4
+                            }
+
+                            StyledMenuItem { text: "Line"; onTriggered: selectedTool = 3 }
+                            StyledMenuItem { text: "Circle"; onTriggered: selectedTool = 4 }
+                            StyledMenuItem { text: "Rectangle"; onTriggered: selectedTool = 5 }
+                            StyledMenuItem { text: "Polyline"; onTriggered: selectedTool = 6 }
+                            StyledMenuItem { text: "Polygon"; onTriggered: selectedTool = 7 }
+                            StyledMenuItem { text: "Boundary"; onTriggered: selectedTool = 12 }
+                            MenuSeparator { }
+                            StyledMenuItem { text: "Undo"; enabled: undoStack.length > 0; onTriggered: root.undo() }
+                            StyledMenuItem { text: "Redo"; enabled: redoStack.length > 0; onTriggered: root.redo() }
                         }
                     }
 
                     // Settings Menu
                     Rectangle {
-                        implicitWidth: settingsMenuText.implicitWidth + 20
-                        implicitHeight: 28
-                        color: settingsMenuMa.containsMouse || settingsMenu.visible ? "#3A3A3A" : "transparent"
+                        implicitWidth: settingsMenuText.implicitWidth + 22
+                        implicitHeight: 30
+                        radius: 2
+                        color: settingsMenuMa.containsMouse || settingsMenu.visible ? "#333333" : "transparent"
 
                         Text {
                             id: settingsMenuText
@@ -1282,19 +1613,29 @@ Window {
                         Menu {
                             id: settingsMenu
                             y: parent.height
+                            background: Rectangle {
+                                color: "#2A2A2A"
+                                border.color: "#4A4A4A"
+                                radius: 4
+                            }
 
-                            MenuItem {
+                            StyledMenuItem {
                                 text: "Options..."
                                 onTriggered: optionsDialog.open()
+                            }
+                            StyledMenuItem {
+                                text: "Coordinate System..."
+                                onTriggered: crsDialog.open()
                             }
                         }
                     }
 
                     // Earthwork Menu
                     Rectangle {
-                        implicitWidth: ewMenuText.implicitWidth + 20
-                        implicitHeight: 28
-                        color: ewMenuMa.containsMouse || ewMenu.visible ? "#3A3A3A" : "transparent"
+                        implicitWidth: ewMenuText.implicitWidth + 22
+                        implicitHeight: 30
+                        radius: 2
+                        color: ewMenuMa.containsMouse || ewMenu.visible ? "#333333" : "transparent"
 
                         Text {
                             id: ewMenuText
@@ -1316,69 +1657,38 @@ Window {
                         Menu {
                             id: ewMenu
                             y: parent.height
-
-                            MenuItem {
-                                text: "Generate DTM..."
-                                onTriggered: {
-                                    if (importedPoints.count === 0) {
-                                        console.warn("Cannot generate DTM: No points imported. Please import CSV data first (File -> Import CSV).")
-                                        return
-                                    }
-                                    dtmDialog.open()
-                                }
+                            background: Rectangle {
+                                color: "#2A2A2A"
+                                border.color: "#4A4A4A"
+                                radius: 4
                             }
 
-                            MenuItem {
+                            StyledMenuItem {
+                                text: "Generate DTM..."
+                                onTriggered: handleToolClick({action: "dtm"})
+                            }
+
+                            StyledMenuItem {
                                 text: "Generate Contours..."
                                 enabled: dtmData !== null
-                                onTriggered: {
-                                    contourDialog.open()
-                                }
+                                onTriggered: handleToolClick({action: "contours"})
                             }
-                            MenuSeparator {}
-                            MenuItem {
+                            MenuSeparator { }
+                            StyledMenuItem {
                                 text: "Generate TIN"
                                 enabled: importedPoints.count >= 3
-                                onTriggered: {
-                                    var pts = []
-                                    for(var i=0; i<importedPoints.count; i++) {
-                                        var p = importedPoints.get(i)
-                                        pts.push({x: p.x, y: p.y, z: p.z || 0})
-                                    }
-                                    console.log("Generating TIN from", pts.length, "points...")
-                                    var result = Earthwork.generateTIN(pts)
-                                    if (result.success) {
-                                        tinData = result
-                                        console.log("TIN generated:", result.triangleCount, "triangles")
-                                        pointsCanvas.requestPaint()
-                                    }
-                                }
+                                onTriggered: generateTIN()
                             }
-                            MenuItem {
+                            StyledMenuItem {
                                 text: "Calculate Volume..."
                                 enabled: dtmData !== null || tinData !== null
                                 onTriggered: volumeDialog.open()
                             }
-                            MenuSeparator {}
-                            MenuItem {
+                            MenuSeparator { }
+                            StyledMenuItem {
                                 text: "Export DTM as 3D Mesh (OBJ)..."
                                 enabled: dtmData !== null
-                                onTriggered: {
-                                    // Generate default filename
-                                    var filename = "dtm_terrain_" + Qt.formatDateTime(new Date(), "yyyyMMdd_hhmmss") + ".obj"
-                                    var filepath = "/home/project3/Desktop/" + filename
-
-                                    console.log("Exporting DTM to OBJ format...")
-                                    var success = Earthwork.exportDTMasOBJ(filepath, 1.5)
-
-                                    if (success) {
-                                        console.log("✓ DTM exported successfully!")
-                                        console.log("  File:", filepath)
-                                        console.log("  To view in 3D:")
-                                        console.log("    1. Install MeshLab: sudo apt install meshlab")
-                                        console.log("    2. Open file: meshlab", filepath)
-                                    }
-                                }
+                                onTriggered: exportDTMObj()
                             }
                             // End of Earthwork Menu
                         }
@@ -1393,22 +1703,81 @@ Window {
 
                     // Grid/Snap/Zoom in menu bar
                     RowLayout {
-                        spacing: 10
+                        spacing: 6
 
-                        Text {
-                            text: "\uf00a"
-                            font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 10
-                            color: "#2ECC71"
-                            Layout.alignment: Qt.AlignVCenter
+                        Rectangle {
+                            width: 24
+                            height: 24
+                            radius: 4
+                            color: gridTopMa.containsMouse ? "#3A3A3A" : (showGrid ? "#2F2F2F" : "transparent")
+                            border.color: showGrid ? accentColor : "transparent"
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\uf009"
+                                font.family: "Font Awesome 5 Pro Solid"
+                                font.pixelSize: 11
+                                color: showGrid ? accentColor : textSecondary
+                            }
+                            MouseArea {
+                                id: gridTopMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: { showGrid = !showGrid; pointsCanvas.requestPaint() }
+                            }
+                            ToolTip { visible: gridTopMa.containsMouse; text: "Toggle Grid" }
                         }
 
-                        Text {
-                            text: "\uf0c8"
-                            font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 10
-                            color: "#2ECC71"
-                            Layout.alignment: Qt.AlignVCenter
+                        Rectangle {
+                            width: 24
+                            height: 24
+                            radius: 4
+                            color: snapTopMa.containsMouse ? "#3A3A3A" : (snapEnabled ? "#2F2F2F" : "transparent")
+                            border.color: snapEnabled ? accentColor : "transparent"
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\uf076"
+                                font.family: "Font Awesome 5 Pro Solid"
+                                font.pixelSize: 11
+                                color: snapEnabled ? accentColor : textSecondary
+                            }
+                            MouseArea {
+                                id: snapTopMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: snapEnabled = !snapEnabled
+                            }
+                            ToolTip { visible: snapTopMa.containsMouse; text: "Toggle Snap" }
+                        }
+
+                        Rectangle {
+                            width: 24
+                            height: 24
+                            radius: 4
+                            color: labelTopMa.containsMouse ? "#3A3A3A" : (showPointLabels ? "#2F2F2F" : "transparent")
+                            border.color: showPointLabels ? accentColor : "transparent"
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\uf02b"
+                                font.family: "Font Awesome 5 Pro Solid"
+                                font.pixelSize: 11
+                                color: showPointLabels ? accentColor : textSecondary
+                            }
+                            MouseArea {
+                                id: labelTopMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: { showPointLabels = !showPointLabels; pointsCanvas.requestPaint() }
+                            }
+                            ToolTip { visible: labelTopMa.containsMouse; text: "Toggle Labels" }
                         }
 
                         Rectangle {
@@ -1454,8 +1823,6 @@ Window {
                             ToolTip { visible: zFitMa.containsMouse; text: "Fit to Screen" }
                         }
                     }
-
-                    Layout.rightMargin: 10
                 }
             }
 
@@ -1470,10 +1837,10 @@ Window {
                 Layout.fillHeight: true
                 spacing: 0
 
-                // Left sidebar - Tools (fixed 2-column grid)
+                // Left sidebar - Tools (fixed 3-column grid)
                 Rectangle {
                     id: toolSidebar
-
+                    Layout.preferredWidth: 160
                     Layout.preferredWidth: 100
                     Layout.fillHeight: true
                     color: darkCardBg
@@ -1485,448 +1852,113 @@ Window {
                         anchors.margins: 6
                         spacing: 6
 
-                        // Tools 2-column grid
-                        GridLayout {
+                        // Tools (scrollable 3-column grid)
+                        ScrollView {
+                            id: toolScroll
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            columns: 2
-                            rowSpacing: 6
-                            columnSpacing: 6
+                            clip: true
+                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-                            // Navigation Tools
-                            Repeater {
-                                model: [
-                                    {id: 0, icon: "\uf245", name: "Select", tooltip: "Select Tool (V)"},
-                                    {id: 1, icon: "\uf256", name: "Pan", tooltip: "Pan Tool (H)"},
-                                    {id: 2, icon: "\uf00e", name: "Zoom+", tooltip: "Zoom In"},
-                                    {id: 20, icon: "\uf010", name: "Zoom-", tooltip: "Zoom Out"},
-                                    {id: 22, icon: "\uf31e", name: "Fit", tooltip: "Zoom Extents (Fit All)"},
-                                    {id: 21, icon: "\uf015", name: "Origin", tooltip: "Zoom to Origin (0,0)"},
-                                    {id: 23, icon: "\uf0ae", name: "Points", tooltip: "Manage Points"}
-                                ]
+                            GridLayout {
+                                width: toolScroll.width
+                                columns: 3
+                                rowSpacing: 6
+                                columnSpacing: 6
+                                ToolSectionHeader { label: "Navigation" }
 
-                                Rectangle {
-                                    property var toolData: modelData
-                                    property bool isSelected: root.selectedTool === toolData.id
-
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 44
-                                    radius: 4
-                                    color: toolMa.containsMouse ? "#3A3A3A" : (isSelected ? "#4A4A4A" : "transparent")
-                                    border.color: isSelected ? accentColor : "transparent"
-                                    border.width: 2
-
-                                    ColumnLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 2
-
-                                        Text {
-                                            text: toolData.icon
-                                            font.family: "Font Awesome 5 Pro Solid"
-                                            font.pixelSize: 12
-                                            color: "white"
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-
-                                        Text {
-                                            text: toolData.name
-                                            font.family: "Codec Pro"
-                                            font.pixelSize: 8
-                                            color: textSecondary
-                                            Layout.alignment: Qt.AlignHCenter
-                                        }
-                                    }
-
-                                    MouseArea {
-                                        id: toolMa
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            console.log("Tool Clicked: " + toolData.name + " (" + toolData.id + ")")
-                                            if (toolData.id === 21) {
-                                                // Instant Action: Reset to Origin
-                                                console.log("Resetting to Origin")
-                                                root.canvasScale = 1.0
-                                                var cx = pointsCanvas.width / 2
-                                                var cy = pointsCanvas.height / 2
-                                                root.canvasOffsetX = cx - root.fitOffsetX
-                                                root.canvasOffsetY = cy - root.fitOffsetY
-                                                pointsCanvas.requestPaint()
-                                            } else if (toolData.id === 2) {
-                                                // Zoom In (Centered)
-                                                var cx = pointsCanvas.width / 2
-                                                var cy = pointsCanvas.height / 2
-                                                var oldWorld = screenToWorld(cx, cy)
-
-                                                root.canvasScale *= 1.2
-
-                                                // Adjust offset to keep center fixed
-                                                // worldToScreen x: sx = canvasOff + fitOff + wx * totalScale -> canvasOff = sx - fitOff - wx*totalScale
-                                                root.canvasOffsetX = cx - root.fitOffsetX - oldWorld.x * (root.fitScale * root.canvasScale)
-
-                                                // worldToScreen y: sy = canvasOff + fitOff - wy * totalScale -> canvasOff = sy - fitOff + wy*totalScale
-                                                root.canvasOffsetY = cy - root.fitOffsetY + oldWorld.y * (root.fitScale * root.canvasScale)
-
-                                                pointsCanvas.requestPaint()
-                                            } else if (toolData.id === 20) {
-                                                // Zoom Out (Centered)
-                                                var cx = pointsCanvas.width / 2
-                                                var cy = pointsCanvas.height / 2
-                                                var oldWorld = screenToWorld(cx, cy)
-
-                                                root.canvasScale /= 1.2
-
-                                                root.canvasOffsetX = cx - root.fitOffsetX - oldWorld.x * (root.fitScale * root.canvasScale)
-                                                root.canvasOffsetY = cy - root.fitOffsetY + oldWorld.y * (root.fitScale * root.canvasScale)
-
-                                                pointsCanvas.requestPaint()
-                                            } else if (toolData.id === 22) {
-                                                // Zoom Extents (Fit All)
-                                                recalculateBounds()
-                                            } else if (toolData.id === 23) {
-                                                pointManagerDialog.open()
-                                            } else {
-                                                root.selectedTool = toolData.id
-                                            }
-                                        }
-                                    }
-
-    PointManagerDialog {
-        id: pointManagerDialog
-        anchors.centerIn: parent
-        pointsModel: importedPoints
-        onZoomToRequested: (point) => {
-            var totalScale = fitScale * canvasScale
-            var targetX = point.x
-            var targetY = point.y
-            canvasOffsetX = (pointsCanvas.width / 2) - fitOffsetX - targetX * totalScale
-            canvasOffsetY = (pointsCanvas.height / 2) - fitOffsetY + targetY * totalScale // Y inverted: sy = off - wy*s -> off = sy + wy*s
-            pointsCanvas.requestPaint()
-        }
-        onDeleteRequested: (index) => {
-            if (index < 0 || index >= importedPoints.count) return
-            var pt = importedPoints.get(index)
-            if (pt && pt.id !== undefined) {
-                Database.deletePoint(pt.id)
-            }
-        }
-    }
-
-                                    ToolTip {
-                                        visible: toolMa.containsMouse
-                                        text: toolData.tooltip
-                                        delay: 500
-                                    }
-                                }
-                            }
-
-                            // Separator spanning 2 columns
-                            Rectangle {
-                                Layout.columnSpan: 2
-                                Layout.fillWidth: true
-                                height: 1
-                                color: "#3A3A3A"
-                                Layout.topMargin: 2
-                                Layout.bottomMargin: 2
-                            }
-
-                            // Measure Distance
-                            Rectangle {
-                                property bool isSelected: root.selectedTool === 10
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 44
-                                radius: 4
-                                color: measureDistMa.containsMouse ? "#3A3A3A" : (isSelected ? "#4A4A4A" : "transparent")
-                                border.color: isSelected ? accentColor : "transparent"
-                                border.width: 2
-
-                                ColumnLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 2
-
-                                    Text {
-                                        text: "\uf547"
-                                        font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 12
-                                        color: "white"
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-
-                                    Text {
-                                        text: "Dist"
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 8
-                                        color: textSecondary
-                                        Layout.alignment: Qt.AlignHCenter
+                                Repeater {
+                                    model: navTools
+                                    delegate: ToolTile {
+                                        toolData: modelData
+                                        onClicked: handleToolClick(toolData)
                                     }
                                 }
 
-                                MouseArea {
-                                    id: measureDistMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: { root.selectedTool = 10; measurePoints = []; drawingState = { active: false } }
+                                ToolSectionHeader { label: "Edit"; Layout.topMargin: 4 }
+
+                                ToolTile {
+                                    toolData: ({ icon: "\uf0e2", name: "Undo", tooltip: "Undo (Ctrl+Z)" })
+                                    isEnabled: undoStack && undoStack.length > 0
+                                    onClicked: if (isEnabled) root.undo()
                                 }
 
-                                ToolTip {
-                                    visible: measureDistMa.containsMouse
-                                    text: "Measure Distance"
-                                    delay: 500
+                                ToolTile {
+                                    toolData: ({ icon: "\uf01e", name: "Redo", tooltip: "Redo (Ctrl+Y / Ctrl+Shift+Z)" })
+                                    isEnabled: redoStack && redoStack.length > 0
+                                    onClicked: if (isEnabled) root.redo()
                                 }
-                            }
 
-                            // Measure Area
-                            Rectangle {
-                                property bool isSelected: root.selectedTool === 11
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 44
-                                radius: 4
-                                color: measureAreaMa.containsMouse ? "#3A3A3A" : (isSelected ? "#4A4A4A" : "transparent")
-                                border.color: isSelected ? accentColor : "transparent"
-                                border.width: 2
+                                ToolTile {
+                                    toolData: ({ icon: "\uf12d", name: "Clear", tooltip: "Clear measurements/drafts" })
+                                    onClicked: clearTransientStates(false)
+                                }
 
-                                ColumnLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 2
+                                ToolSectionHeader { label: "Draft"; Layout.topMargin: 4 }
 
-                                    Text {
-                                        text: "\uf5cb"
-                                        font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 12
-                                        color: "white"
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-
-                                    Text {
-                                        text: "Area"
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 8
-                                        color: textSecondary
-                                        Layout.alignment: Qt.AlignHCenter
+                                Repeater {
+                                    model: drawTools
+                                    delegate: ToolTile {
+                                        toolData: modelData
+                                        onClicked: handleToolClick(toolData)
                                     }
                                 }
 
-                                MouseArea {
-                                    id: measureAreaMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: { root.selectedTool = 11; measurePoints = []; drawingState = { active: false } }
-                                }
+                                ToolSectionHeader { label: "Survey"; Layout.topMargin: 4 }
 
-                                ToolTip {
-                                    visible: measureAreaMa.containsMouse
-                                    text: "Measure Area"
-                                    delay: 500
-                                }
-                            }
-
-                            // Buffer
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 44
-                                radius: 4
-                                color: bufferToolSidebarMa.containsMouse ? "#3A3A3A" : "transparent"
-                                border.color: "transparent"
-                                border.width: 2
-
-                                ColumnLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 2
-
-                                    Text {
-                                        text: "\uf5ee"
-                                        font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 12
-                                        color: "white"
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-
-                                    Text {
-                                        text: "Buffer"
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 8
-                                        color: textSecondary
-                                        Layout.alignment: Qt.AlignHCenter
+                                Repeater {
+                                    model: surveyTools
+                                    delegate: ToolTile {
+                                        toolData: modelData
+                                        onClicked: handleToolClick(toolData)
                                     }
                                 }
 
-                                MouseArea {
-                                    id: bufferToolSidebarMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if (selectedPoints.length > 0 || drawnShapes.length > 0) {
-                                            bufferDialog.open()
-                                        } else {
-                                            console.log("Select a shape to buffer")
-                                        }
+                                ToolSectionHeader { label: "Earthwork"; Layout.topMargin: 4 }
+
+                                Repeater {
+                                    model: earthworkTools
+                                    delegate: ToolTile {
+                                        toolData: modelData
+                                        onClicked: handleToolClick(toolData)
                                     }
                                 }
 
-                                ToolTip {
-                                    visible: bufferToolSidebarMa.containsMouse
-                                    text: "Create Buffer"
-                                    delay: 500
-                                }
-                            }
+                                ToolSectionHeader { label: "Display"; Layout.topMargin: 4 }
 
-                            // Add Point Tool
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 44
-                                radius: 4
-                                color: addPointMa.containsMouse ? "#3A3A3A" : "transparent"
-                                border.color: "transparent"
-                                border.width: 2
-
-                                ColumnLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 2
-
-                                    Text {
-                                        text: "\uf3c5" // map-marker-alt
-                                        font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 12
-                                        color: "white"
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-
-                                    Text {
-                                        text: "Add Pt"
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 8
-                                        color: textSecondary
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: addPointMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                         root.selectedTool = 30
-                                         addPointDialog.clearFields()
-                                         addPointDialog.open()
-                                    }
-                                }
-
-                                ToolTip {
-                                    visible: addPointMa.containsMouse
-                                    text: "Add Control Point"
-                                    delay: 500
-                                }
-                            }
-
-                            // Separator spanning 2 columns
-                            Rectangle {
-                                Layout.columnSpan: 2
-                                Layout.fillWidth: true
-                                height: 1
-                                color: "#3A3A3A"
-                                Layout.topMargin: 2
-                                Layout.bottomMargin: 2
-                            }
-
-                            // Grid Toggle
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 44
-                                radius: 4
-                                color: gridToggleMa.containsMouse ? "#3A3A3A" : (showGrid ? "#4A4A4A" : "transparent")
-                                border.color: showGrid ? accentColor : "transparent"
-                                border.width: 2
-
-                                ColumnLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 2
-
-                                    Text {
-                                        text: "\uf009"
-                                        font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 14
-                                        color: "white"
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-
-                                    Text {
-                                        text: "Grid"
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 8
-                                        color: textSecondary
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: gridToggleMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
+                                ToggleToolTile {
+                                    icon: "\uf009"
+                                    label: "Grid"
+                                    tooltip: "Toggle Grid"
+                                    active: showGrid
                                     onClicked: { showGrid = !showGrid; pointsCanvas.requestPaint() }
                                 }
 
-                                ToolTip {
-                                    visible: gridToggleMa.containsMouse
-                                    text: "Toggle Grid"
-                                    delay: 500
+                                ToggleToolTile {
+                                    icon: "\uf076"
+                                    label: "Snap"
+                                    tooltip: "Toggle Snap"
+                                    active: snapEnabled
+                                    onClicked: snapEnabled = !snapEnabled
                                 }
-                            }
 
-                            // Snap Toggle
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 44
-                                radius: 4
-                                color: snapToggleMa.containsMouse ? "#3A3A3A" : (snapEnabled ? "#4A4A4A" : "transparent")
-                                border.color: snapEnabled ? accentColor : "transparent"
-                                border.width: 2
+                                ToggleToolTile {
+                                    icon: "\uf02b"
+                                    label: "Labels"
+                                    tooltip: "Toggle Labels"
+                                    active: showPointLabels
+                                    onClicked: { showPointLabels = !showPointLabels; pointsCanvas.requestPaint() }
+                                }
 
-                                ColumnLayout {
-                                    anchors.centerIn: parent
-                                    spacing: 2
-
-                                    Text {
-                                        text: "\uf076"
-                                        font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 14
-                                        color: "white"
-                                        Layout.alignment: Qt.AlignHCenter
-                                    }
-
-                                    Text {
-                                        text: "Snap"
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 8
-                                        color: textSecondary
-                                        Layout.alignment: Qt.AlignHCenter
+                                Repeater {
+                                    model: displayTools
+                                    delegate: ToolTile {
+                                        toolData: modelData
+                                        onClicked: handleToolClick(toolData)
                                     }
                                 }
 
-                                MouseArea {
-                                    id: snapToggleMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: { snapEnabled = !snapEnabled }
-                                }
-
-                                ToolTip {
-                                    visible: snapToggleMa.containsMouse
-                                    text: "Toggle Snapping"
-                                    delay: 500
-                                }
-                            }
-
-                            // Spacer to push everything up
-                            Item {
-                                Layout.columnSpan: 2
-                                Layout.fillHeight: true
+                                Item { Layout.columnSpan: 3; height: 1 }
                             }
                         }
                     }
@@ -2276,7 +2308,7 @@ Window {
                                         }
                                     }
                                     // Draw Point Label
-                                    if (pt.name) {
+                                    if (showPointLabels && pt.name) {
                                         ctx.fillStyle = "#B0B0B0"
                                         ctx.font = "10px sans-serif"
                                         ctx.fillText(pt.name, pos.x + 8, pos.y + 3)
@@ -2309,6 +2341,37 @@ Window {
                                             var sw = shape.w * fitScale * canvasScale
                                             var sh = -shape.h * fitScale * canvasScale // Y inverted
                                             ctx.rect(pStart.x, pStart.y, sw, sh)
+                                        } else if (shape.type === "polyline" && shape.points) {
+                                            var pts = shape.points
+                                            if (pts.length > 1) {
+                                                var p0 = worldToScreen(pts[0].x, pts[0].y)
+                                                ctx.moveTo(p0.x, p0.y)
+                                                for (var pp = 1; pp < pts.length; pp++) {
+                                                    var pN = worldToScreen(pts[pp].x, pts[pp].y)
+                                                    ctx.lineTo(pN.x, pN.y)
+                                                }
+                                            }
+                                        } else if (shape.type === "boundary" && shape.points) {
+                                            var pts = shape.points
+                                            if (pts.length > 2) {
+                                                ctx.save()
+                                                ctx.strokeStyle = shape.color || "#FFB020"
+                                                ctx.fillStyle = shape.fillColor || "rgba(255,176,32,0.07)"
+                                                ctx.lineWidth = 2
+                                                ctx.setLineDash([6, 4])
+
+                                                var p0 = worldToScreen(pts[0].x, pts[0].y)
+                                                ctx.moveTo(p0.x, p0.y)
+                                                for (var pp = 1; pp < pts.length; pp++) {
+                                                    var pN = worldToScreen(pts[pp].x, pts[pp].y)
+                                                    ctx.lineTo(pN.x, pN.y)
+                                                }
+                                                ctx.closePath()
+                                                ctx.fill()
+                                                ctx.stroke()
+                                                ctx.restore()
+                                                skipFinalStroke = true
+                                            }
                                         } else if (shape.type === "polygon" && shape.points) {
                                             var pts = shape.points
                                             if (pts.length > 0) {
@@ -2467,9 +2530,72 @@ Window {
                                      ctx.setLineDash([])
                                 }
 
-                                // Helper to convert World to Screen (for rendering)
-                                // Function moved to root level for better scope access
-                                // Function moved to root level for better scope access
+                                // Draft polyline (click points, double-click to finish)
+                                if (selectedTool === 6 && polylineDraftPoints && polylineDraftPoints.length > 0) {
+                                    ctx.save()
+                                    ctx.strokeStyle = "yellow"
+                                    ctx.lineWidth = 2
+                                    ctx.setLineDash([4, 4])
+                                    ctx.beginPath()
+
+                                    var dp0 = worldToScreen(polylineDraftPoints[0].x, polylineDraftPoints[0].y)
+                                    ctx.moveTo(dp0.x, dp0.y)
+                                    for (var di = 1; di < polylineDraftPoints.length; di++) {
+                                        var dp = worldToScreen(polylineDraftPoints[di].x, polylineDraftPoints[di].y)
+                                        ctx.lineTo(dp.x, dp.y)
+                                    }
+                                    ctx.lineTo(lastMouseX, lastMouseY)
+                                    ctx.stroke()
+                                    ctx.restore()
+                                }
+
+                                // Draft polygon (click points, double-click to finish)
+                                if (selectedTool === 7 && polygonDraftPoints && polygonDraftPoints.length > 0) {
+                                    ctx.save()
+                                    ctx.strokeStyle = "yellow"
+                                    ctx.fillStyle = "rgba(255, 255, 0, 0.08)"
+                                    ctx.lineWidth = 2
+                                    ctx.setLineDash([4, 4])
+                                    ctx.beginPath()
+
+                                    var pg0 = worldToScreen(polygonDraftPoints[0].x, polygonDraftPoints[0].y)
+                                    ctx.moveTo(pg0.x, pg0.y)
+                                    for (var pi = 1; pi < polygonDraftPoints.length; pi++) {
+                                        var pg = worldToScreen(polygonDraftPoints[pi].x, polygonDraftPoints[pi].y)
+                                        ctx.lineTo(pg.x, pg.y)
+                                    }
+                                    ctx.lineTo(lastMouseX, lastMouseY)
+                                    if (polygonDraftPoints.length >= 3) {
+                                        ctx.closePath()
+                                        ctx.fill()
+                                    }
+                                    ctx.stroke()
+                                    ctx.restore()
+                                }
+
+                                // Draft boundary (earthwork volume/buffer)
+                                if (selectedTool === 12 && boundaryDraftPoints && boundaryDraftPoints.length > 0) {
+                                    ctx.save()
+                                    ctx.strokeStyle = "#FFB020"
+                                    ctx.fillStyle = "rgba(255,176,32,0.06)"
+                                    ctx.lineWidth = 2
+                                    ctx.setLineDash([6, 4])
+                                    ctx.beginPath()
+
+                                    var b0 = worldToScreen(boundaryDraftPoints[0].x, boundaryDraftPoints[0].y)
+                                    ctx.moveTo(b0.x, b0.y)
+                                    for (var bi = 1; bi < boundaryDraftPoints.length; bi++) {
+                                        var bp = worldToScreen(boundaryDraftPoints[bi].x, boundaryDraftPoints[bi].y)
+                                        ctx.lineTo(bp.x, bp.y)
+                                    }
+                                    ctx.lineTo(lastMouseX, lastMouseY)
+                                    if (boundaryDraftPoints.length >= 3) {
+                                        ctx.closePath()
+                                        ctx.fill()
+                                    }
+                                    ctx.stroke()
+                                    ctx.restore()
+                                }
                             }
                     // Canvas MouseArea for panning
                     MouseArea {
@@ -2486,24 +2612,49 @@ Window {
                         property point selectionStart: Qt.point(0, 0)
 
                         Keys.onEscapePressed: {
-                            // Clear selection and measurements
-                            measurePoints = []
-                            drawingState = { active: false }
-                            selectedPoints = [] // Clear point selection
-                            selectedPointIndex = -1
+                            clearTransientStates(true)
+                            console.log("Measurements cleared via ESC")
+                        }
 
-                            var cleanShapes = []
-                            for(var s=0; s<drawnShapes.length; s++) {
-                                var t = drawnShapes[s].type
-                                if (t !== "measure_line" && t !== "measure_poly") {
-                                    cleanShapes.push(drawnShapes[s])
+                        Keys.onPressed: (event) => {
+                            // Undo / Redo
+                            if (event.modifiers & Qt.ControlModifier) {
+                                if (event.key === Qt.Key_Z) {
+                                    if (event.modifiers & Qt.ShiftModifier) root.redo()
+                                    else root.undo()
+                                    event.accepted = true
+                                    return
+                                }
+                                if (event.key === Qt.Key_Y) {
+                                    root.redo()
+                                    event.accepted = true
+                                    return
                                 }
                             }
-                            drawnShapes = cleanShapes
-                            pointsCanvas.requestPaint()
-                            selectionBox.visible = false
-                            isBoxSelecting = false
-                            console.log("Measurements cleared via ESC")
+
+                            if (event.modifiers !== Qt.NoModifier)
+                                return
+
+                            switch (event.key) {
+                            case Qt.Key_V: root.selectedTool = 0; break // Select
+                            case Qt.Key_H: root.selectedTool = 1; break // Pan
+                            case Qt.Key_L: root.selectedTool = 3; break // Line
+                            case Qt.Key_C: root.selectedTool = 4; break // Circle
+                            case Qt.Key_R: root.selectedTool = 5; break // Rectangle
+                            case Qt.Key_P: root.selectedTool = 6; break // Polyline
+                            case Qt.Key_O: root.selectedTool = 7; break // Polygon
+                            case Qt.Key_B: root.selectedTool = 12; break // Boundary
+                            case Qt.Key_D: root.selectedTool = 10; break // Measure Distance
+                            case Qt.Key_A: root.selectedTool = 11; break // Measure Area
+                            case Qt.Key_F: recalculateBounds(); break // Fit
+                            case Qt.Key_G: showGrid = !showGrid; pointsCanvas.requestPaint(); break
+                            case Qt.Key_S: snapEnabled = !snapEnabled; break
+                            case Qt.Key_T: showPointLabels = !showPointLabels; pointsCanvas.requestPaint(); break
+                            default:
+                                return
+                            }
+
+                            event.accepted = true
                         }
 
                         onClicked: (mouse) => {
@@ -2526,14 +2677,6 @@ Window {
                                     } else {
                                         worldPos = screenToWorld(mouse.x, mouse.y)
                                     }
-                                    // Clear previous measurements
-                                    var cleanShapes = []
-                                    for(var s=0; s<drawnShapes.length; s++) {
-                                        if (drawnShapes[s].type !== "measure_line" && drawnShapes[s].type !== "measure_poly") {
-                                            cleanShapes.push(drawnShapes[s])
-                                        }
-                                    }
-                                    drawnShapes = cleanShapes
 
                                     drawingState = {
                                         active: true,
@@ -2555,6 +2698,7 @@ Window {
 
                                     var dist = calculateDistance(drawingState.startX, drawingState.startY, finalPos.x, finalPos.y)
                                     if (dist > 0) {
+                                        pushUndoState()
                                         drawnShapes.push({
                                             type: "measure_line",
                                             x1: drawingState.startX,
@@ -2569,21 +2713,49 @@ Window {
                                     drawingState = { active: false }
                                 }
                             } else if (selectedTool === 11) { // Measure Area add point
-                                // Clear previous if starting new (first point)
-                                if (!measurePoints || measurePoints.length === 0) {
-                                     var cleanShapesAreas = []
-                                     for(var sa=0; sa<drawnShapes.length; sa++) {
-                                        if (drawnShapes[sa].type !== "measure_line" && drawnShapes[sa].type !== "measure_poly") {
-                                            cleanShapesAreas.push(drawnShapes[sa])
-                                        }
-                                     }
-                                     drawnShapes = cleanShapesAreas
-                                }
-
                                 var worldPos = screenToWorld(mouse.x, mouse.y)
                                 var pts = measurePoints ? measurePoints : []
                                 pts.push({x: worldPos.x, y: worldPos.y})
                                 measurePoints = pts
+                                pointsCanvas.requestPaint()
+                            } else if (selectedTool === 6) { // Polyline add point
+                                var snapIdx = findPointAtPosition(mouse.x, mouse.y)
+                                var worldPos
+                                if (snapIdx !== -1) {
+                                    var pt = importedPoints.get(snapIdx)
+                                    worldPos = { x: pt.x, y: pt.y }
+                                } else {
+                                    worldPos = screenToWorld(mouse.x, mouse.y)
+                                }
+                                var pts = polylineDraftPoints ? polylineDraftPoints : []
+                                pts.push({ x: worldPos.x, y: worldPos.y })
+                                polylineDraftPoints = pts
+                                pointsCanvas.requestPaint()
+                            } else if (selectedTool === 7) { // Polygon add point
+                                var snapIdx = findPointAtPosition(mouse.x, mouse.y)
+                                var worldPos
+                                if (snapIdx !== -1) {
+                                    var pt = importedPoints.get(snapIdx)
+                                    worldPos = { x: pt.x, y: pt.y }
+                                } else {
+                                    worldPos = screenToWorld(mouse.x, mouse.y)
+                                }
+                                var pts = polygonDraftPoints ? polygonDraftPoints : []
+                                pts.push({ x: worldPos.x, y: worldPos.y })
+                                polygonDraftPoints = pts
+                                pointsCanvas.requestPaint()
+                            } else if (selectedTool === 12) { // Boundary add point
+                                var snapIdx = findPointAtPosition(mouse.x, mouse.y)
+                                var worldPos
+                                if (snapIdx !== -1) {
+                                    var pt = importedPoints.get(snapIdx)
+                                    worldPos = { x: pt.x, y: pt.y }
+                                } else {
+                                    worldPos = screenToWorld(mouse.x, mouse.y)
+                                }
+                                var pts = boundaryDraftPoints ? boundaryDraftPoints : []
+                                pts.push({ x: worldPos.x, y: worldPos.y })
+                                boundaryDraftPoints = pts
                                 pointsCanvas.requestPaint()
                             }
                         }
@@ -2592,6 +2764,7 @@ Window {
                              if (selectedTool === 11) { // Measure Area finish
                                  if (measurePoints && measurePoints.length >= 3) {
                                      var area = calculatePolygonArea(measurePoints)
+                                     pushUndoState()
                                      drawnShapes.push({
                                          type: "measure_poly",
                                          points: measurePoints,
@@ -2599,6 +2772,55 @@ Window {
                                          color: "#00CED1"
                                      })
                                      measurePoints = [] // Clear active
+                                     pointsCanvas.requestPaint()
+                                 }
+                             } else if (selectedTool === 6) { // Polyline finish
+                                 if (polylineDraftPoints && polylineDraftPoints.length >= 2) {
+                                     var layerName = (activeLayer < layers.count) ? layers.get(activeLayer).layerName : "Layer"
+                                     var layerColor = (activeLayer < layers.count) ? layers.get(activeLayer).layerColor : "white"
+                                     pushUndoState()
+                                     drawnShapes.push({
+                                         type: "polyline",
+                                         points: polylineDraftPoints,
+                                         color: layerColor,
+                                         layer: layerName
+                                     })
+                                     polylineDraftPoints = []
+                                     pointsCanvas.requestPaint()
+                                 }
+                             } else if (selectedTool === 7) { // Polygon finish
+                                 if (polygonDraftPoints && polygonDraftPoints.length >= 3) {
+                                     var layerName = (activeLayer < layers.count) ? layers.get(activeLayer).layerName : "Layer"
+                                     var layerColor = (activeLayer < layers.count) ? layers.get(activeLayer).layerColor : "white"
+                                     pushUndoState()
+                                     drawnShapes.push({
+                                         type: "polygon",
+                                         points: polygonDraftPoints,
+                                         color: layerColor,
+                                         layer: layerName
+                                     })
+                                     polygonDraftPoints = []
+                                     pointsCanvas.requestPaint()
+                                 }
+                             } else if (selectedTool === 12) { // Boundary finish
+                                 if (boundaryDraftPoints && boundaryDraftPoints.length >= 3) {
+                                     pushUndoState()
+                                     boundaryPolygon = boundaryDraftPoints
+
+                                     // Keep a single boundary shape
+                                     var nextShapes = []
+                                     for (var si = 0; si < drawnShapes.length; si++) {
+                                         if (drawnShapes[si].type !== "boundary") nextShapes.push(drawnShapes[si])
+                                     }
+                                     nextShapes.push({
+                                         type: "boundary",
+                                         points: boundaryDraftPoints,
+                                         color: "#FFB020",
+                                         fillColor: "rgba(255,176,32,0.07)",
+                                         layer: "Boundary"
+                                     })
+                                     drawnShapes = nextShapes
+                                     boundaryDraftPoints = []
                                      pointsCanvas.requestPaint()
                                  }
                              }
@@ -2646,7 +2868,7 @@ Window {
                                 if (selectedTool === 1) { // Pan tool
                                     isPanning = true
                                     cursorShape = Qt.ClosedHandCursor
-                                } else if (selectedTool >= 3 && selectedTool <= 9) { // Drawing tools
+                                } else if (selectedTool === 3 || selectedTool === 4 || selectedTool === 5) { // Drawing tools
                                     var worldPos = screenToWorld(mouse.x, mouse.y)
                                     drawingState = {
                                         active: true,
@@ -2723,6 +2945,14 @@ Window {
                                 lastMouseX = mouse.x
                                 lastMouseY = mouse.y
                                 if (measurePoints && measurePoints.length > 0) pointsCanvas.requestPaint()
+                            } else if (selectedTool === 6 || selectedTool === 7 || selectedTool === 12) {
+                                lastMouseX = mouse.x
+                                lastMouseY = mouse.y
+
+                                var hasDraft = (selectedTool === 6 && polylineDraftPoints && polylineDraftPoints.length > 0) ||
+                                               (selectedTool === 7 && polygonDraftPoints && polygonDraftPoints.length > 0) ||
+                                               (selectedTool === 12 && boundaryDraftPoints && boundaryDraftPoints.length > 0)
+                                if (hasDraft) pointsCanvas.requestPaint()
                             }
 
                             // Box Selection Update (Visual)
@@ -2782,25 +3012,29 @@ Window {
                                 // Points are added on click, not drag.
                                 drawingState = { active: false }
                                 pointsCanvas.requestPaint()
-                            } else if (selectedTool >= 3 && selectedTool <= 9 && drawingState.active) {
+                            } else if ((selectedTool === 3 || selectedTool === 4 || selectedTool === 5) && drawingState.active) {
                                 // Finish drawing shape
                                 var worldPos = screenToWorld(mouse.x, mouse.y)
                                 var shape = null
 
+                                var layerName = (activeLayer < layers.count) ? layers.get(activeLayer).layerName : "Layer"
+                                var layerColor = (activeLayer < layers.count) ? layers.get(activeLayer).layerColor : "white"
+
                                 if (selectedTool === 3) { // Line
-                                    shape = { type: "line", x1: drawingState.startX, y1: drawingState.startY, x2: worldPos.x, y2: worldPos.y, color: "white" }
+                                    shape = { type: "line", x1: drawingState.startX, y1: drawingState.startY, x2: worldPos.x, y2: worldPos.y, color: layerColor, layer: layerName }
                                 } else if (selectedTool === 4) { // Circle
                                     var dx = worldPos.x - drawingState.startX
                                     var dy = worldPos.y - drawingState.startY
                                     var radius = Math.sqrt(dx*dx + dy*dy)
-                                    shape = { type: "circle", cx: drawingState.startX, cy: drawingState.startY, radius: radius, color: "white" }
+                                    shape = { type: "circle", cx: drawingState.startX, cy: drawingState.startY, radius: radius, color: layerColor, layer: layerName }
                                 } else if (selectedTool === 5) { // Rectangle
                                     var w = worldPos.x - drawingState.startX
                                     var h = worldPos.y - drawingState.startY
-                                    shape = { type: "rectangle", x: drawingState.startX, y: drawingState.startY, w: w, h: h, color: "white" }
+                                    shape = { type: "rectangle", x: drawingState.startX, y: drawingState.startY, w: w, h: h, color: layerColor, layer: layerName }
                                 }
 
                                 if (shape) {
+                                    pushUndoState()
                                     var newShapes = drawnShapes
                                     if (!newShapes) newShapes = []
                                     newShapes.push(shape)
@@ -2823,6 +3057,7 @@ Window {
                     }
 
                     }
+
                 }
 
                 // Right sidebar - Layers & Properties Panel
@@ -3493,6 +3728,153 @@ Window {
                                 }
                             }
                         }
+
+                        // Survey Summary
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 160
+                            color: "#2A2A2A"
+                            radius: 4
+                            visible: !layersPanel.collapsed
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 6
+
+                                RowLayout {
+                                    spacing: 6
+                                    Text {
+                                        text: "\uf05a"
+                                        font.family: "Font Awesome 5 Pro Solid"
+                                        font.pixelSize: 9
+                                        color: accentColor
+                                    }
+                                    Text {
+                                        text: "Survey Summary"
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 10
+                                        font.weight: Font.Bold
+                                        color: textPrimary
+                                    }
+                                }
+
+                                Rectangle { height: 1; Layout.fillWidth: true; color: "#3A3A3A" }
+
+                                Text {
+                                    text: "Points: " + importedPoints.count
+                                    font.family: "Codec Pro"
+                                    font.pixelSize: 9
+                                    color: textSecondary
+                                }
+                                Text {
+                                    text: "Shapes: " + (drawnShapes ? drawnShapes.length : 0)
+                                    font.family: "Codec Pro"
+                                    font.pixelSize: 9
+                                    color: textSecondary
+                                }
+                                Text {
+                                    text: boundaryPolygon && boundaryPolygon.length >= 3
+                                          ? "Boundary: " + calculatePolygonArea(boundaryPolygon).toFixed(2) + " m²"
+                                          : "Boundary: not set"
+                                    font.family: "Codec Pro"
+                                    font.pixelSize: 9
+                                    color: textSecondary
+                                }
+                                Text {
+                                    text: dtmData && dtmData.width > 0
+                                          ? "DTM: " + dtmData.width + "×" + dtmData.height
+                                          : "DTM: none"
+                                    font.family: "Codec Pro"
+                                    font.pixelSize: 9
+                                    color: textSecondary
+                                }
+                                Text {
+                                    text: tinData && tinData.success
+                                          ? "TIN: " + tinData.triangleCount + " tris"
+                                          : "TIN: none"
+                                    font.family: "Codec Pro"
+                                    font.pixelSize: 9
+                                    color: textSecondary
+                                }
+                                Text {
+                                    text: contourLines && contourLines.length > 0
+                                          ? "Contours: " + contourLines.length
+                                          : "Contours: none"
+                                    font.family: "Codec Pro"
+                                    font.pixelSize: 9
+                                    color: textSecondary
+                                }
+
+                                RowLayout {
+                                    spacing: 6
+                                    Layout.fillWidth: true
+
+                                    Rectangle {
+                                        width: 60
+                                        height: 22
+                                        radius: 3
+                                        color: cogoQuickMa.containsMouse ? accentColor : "#3A3A3A"
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "COGO"
+                                            font.family: "Codec Pro"
+                                            font.pixelSize: 8
+                                            color: "white"
+                                        }
+                                        MouseArea {
+                                            id: cogoQuickMa
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: openCogoFromSelection()
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: 60
+                                        height: 22
+                                        radius: 3
+                                        color: pointsQuickMa.containsMouse ? accentColor : "#3A3A3A"
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Points"
+                                            font.family: "Codec Pro"
+                                            font.pixelSize: 8
+                                            color: "white"
+                                        }
+                                        MouseArea {
+                                            id: pointsQuickMa
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: openPointManager()
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: 60
+                                        height: 22
+                                        radius: 3
+                                        color: crsQuickMa.containsMouse ? accentColor : "#3A3A3A"
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "CRS"
+                                            font.family: "Codec Pro"
+                                            font.pixelSize: 8
+                                            color: "white"
+                                        }
+                                        MouseArea {
+                                            id: crsQuickMa
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: crsDialog.open()
+                                        }
+                                    }
+                                }
+                            }
+                        }
                 }
             }
         }
@@ -3624,14 +4006,14 @@ Window {
                             width: 6
                             height: 6
                             radius: 3
-                            color: isLoading ? "#F39C12" : "#2ECC71"
+                            color: Earthwork.isProcessing ? "#F39C12" : "#2ECC71"
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
-                            text: isLoading ? "Loading..." : "Ready"
+                            text: Earthwork.isProcessing ? "Processing..." : "Ready"
                             font.family: "Codec Pro"
                             font.pixelSize: 9
-                            color: isLoading ? "#F39C12" : "#2ECC71"
+                            color: Earthwork.isProcessing ? "#F39C12" : "#2ECC71"
                             font.weight: Font.Medium
                             anchors.verticalCenter: parent.verticalCenter
                         }
@@ -3861,6 +4243,7 @@ Window {
             }
 
             console.log("Generating DTM with resolution:", res)
+            startProcessing("Generating DTM...")
             Earthwork.generateDTM(pts, res)
 
             // Load DTM data for visualization
@@ -3868,6 +4251,7 @@ Window {
             if (dtmData && dtmData.width > 0) {
                 pointsCanvas.requestPaint()
             }
+            if (!Earthwork.isProcessing) stopProcessing()
         }
     }
 
@@ -3907,6 +4291,7 @@ Window {
             if (isNaN(val) || val <= 0) return
 
             console.log("Generating contours at " + val + "m interval...")
+            startProcessing("Generating contours...")
             var result = Earthwork.generateContours(val)
 
             if (result.length > 5000) {
@@ -3917,6 +4302,161 @@ Window {
             }
             pointsCanvas.requestPaint()
             console.log("Displaying", contourLines.length, "contour lines")
+            if (!Earthwork.isProcessing) stopProcessing()
+        }
+    }
+
+    component StyledMenuItem : MenuItem {
+        id: menuItem
+        font.family: "Codec Pro"
+        font.pixelSize: 10
+
+        contentItem: RowLayout {
+            anchors.fill: parent
+            spacing: 6
+
+            Text {
+                text: menuItem.checkable && menuItem.checked ? "\uf00c" : ""
+                font.family: "Font Awesome 5 Pro Solid"
+                font.pixelSize: 8
+                color: menuItem.enabled ? accentColor : "#555"
+                width: 12
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            Text {
+                text: menuItem.text
+                font.family: menuItem.font.family
+                font.pixelSize: menuItem.font.pixelSize
+                color: menuItem.enabled ? textPrimary : "#666"
+                elide: Text.ElideRight
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            Item { Layout.fillWidth: true }
+        }
+
+        background: Rectangle {
+            color: menuItem.highlighted ? "#3A3A3A" : "transparent"
+        }
+    }
+
+    component ToolSectionHeader : Rectangle {
+        property string label: ""
+        Layout.columnSpan: 3
+        Layout.fillWidth: true
+        height: 18
+        color: "transparent"
+
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: parent.label
+            font.family: "Codec Pro"
+            font.pixelSize: 8
+            font.weight: Font.Bold
+            color: textSecondary
+        }
+    }
+
+    component ToolTile : Rectangle {
+        property var toolData: ({})
+        property bool isSelected: toolData.id !== undefined && root.selectedTool === toolData.id
+        property bool isEnabled: toolData.enabled === undefined ? true : toolData.enabled
+        signal clicked()
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: 44
+        radius: 4
+        color: tileMa.containsMouse ? "#3A3A3A" : (isSelected ? "#4A4A4A" : "transparent")
+        border.color: isSelected ? accentColor : "transparent"
+        border.width: 2
+        opacity: isEnabled ? 1.0 : 0.35
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 2
+
+            Text {
+                text: toolData.icon || ""
+                font.family: "Font Awesome 5 Pro Solid"
+                font.pixelSize: 12
+                color: "white"
+                Layout.alignment: Qt.AlignHCenter
+            }
+
+            Text {
+                text: toolData.name || ""
+                font.family: "Codec Pro"
+                font.pixelSize: 8
+                color: textSecondary
+                Layout.alignment: Qt.AlignHCenter
+            }
+        }
+
+        MouseArea {
+            id: tileMa
+            anchors.fill: parent
+            hoverEnabled: true
+            enabled: isEnabled
+            cursorShape: isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: parent.clicked()
+        }
+
+        ToolTip {
+            visible: tileMa.containsMouse
+            text: toolData.tooltip || toolData.name || ""
+            delay: 500
+        }
+    }
+
+    component ToggleToolTile : Rectangle {
+        property string icon: ""
+        property string label: ""
+        property string tooltip: ""
+        property bool active: false
+        signal clicked()
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: 44
+        radius: 4
+        color: toggleMa.containsMouse ? "#3A3A3A" : (active ? "#4A4A4A" : "transparent")
+        border.color: active ? accentColor : "transparent"
+        border.width: 2
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 2
+
+            Text {
+                text: icon
+                font.family: "Font Awesome 5 Pro Solid"
+                font.pixelSize: 12
+                color: "white"
+                Layout.alignment: Qt.AlignHCenter
+            }
+
+            Text {
+                text: label
+                font.family: "Codec Pro"
+                font.pixelSize: 8
+                color: textSecondary
+                Layout.alignment: Qt.AlignHCenter
+            }
+        }
+
+        MouseArea {
+            id: toggleMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: parent.clicked()
+        }
+
+        ToolTip {
+            visible: toggleMa.containsMouse
+            text: tooltip
+            delay: 500
         }
     }
 
@@ -3926,7 +4466,7 @@ Window {
         signal clicked()
 
         implicitWidth: menuText.implicitWidth + 20
-        implicitHeight: 28
+        implicitHeight: 30
         color: menuMa.containsMouse ? "#3A3A3A" : "transparent"
 
         Text {
@@ -4492,6 +5032,29 @@ Window {
         }
     }
 
+    PointManagerDialog {
+        id: pointManagerDialog
+        pointsModel: importedPoints
+
+        onZoomToRequested: {
+            if (!point) return
+            var totalScale = fitScale * canvasScale
+            canvasOffsetX = (pointsCanvas.width / 2) - fitOffsetX - point.x * totalScale
+            canvasOffsetY = (pointsCanvas.height / 2) - fitOffsetY + point.y * totalScale
+            pointsCanvas.requestPaint()
+        }
+
+        onDeleteRequested: {
+            if (index >= 0 && index < importedPoints.count) {
+                var pt = importedPoints.get(index)
+                if (pt && pt.id !== undefined) {
+                    Database.deletePoint(pt.id)
+                    selectedPoints = []
+                    selectedPointIndex = -1
+                }
+            }
+        }
+    }
     AddPointDialog {
         id: addPointDialog
         onPickRequested: {
@@ -4521,7 +5084,8 @@ Window {
     ProcessingOverlay {
         id: processingOverlay
         anchors.fill: parent
-        message: "Generating DTM..."
+        message: processingOverlayMessage
+        isProcessing: false
     }
 }
 

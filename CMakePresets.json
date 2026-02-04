@@ -1,5 +1,5 @@
 {
-    "version": 6,
+    "version": 8,
     "$schema": "https://cmake.org/cmake/help/latest/_downloads/1e2b5e2f1fcae0dd847ca68b3c34f6e0/schema.json",
     "cmakeMinimumRequired": {
         "major": 3,
