@@ -196,7 +196,7 @@ Item {
         fetchWeather()
         refreshDashboardData()
         // Add initial activity
-        addActivity("Dashboard opened", projectName, "#321fdb")
+        addActivity("Dashboard opened", projectName, accentColor)
     }
 
     Timer {
@@ -215,15 +215,24 @@ Item {
         function onProjectChanged() { projectInfo = Database.currentProjectDetails() }
     }
 
-    // CoreUI Colors
-    property color bgColor: "#ebedef"
-    property color sidebarColor: "#3c4b64"
-    property color headerColor: "#ffffff"
+    // Compact light theme
+    property color bgColor: "#f6f7f9"
+    property color cardColor: "#ffffff"
+    property color borderColor: "#d0d7de"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color accentColor: "#2563eb"
+    property color successColor: "#16a34a"
+    property color warningColor: "#f59e0b"
+    property color dangerColor: "#dc2626"
+    property color infoColor: "#0ea5e9"
+    property color sidebarColor: cardColor
+    property color headerColor: cardColor
 
-    // Glass Effect Properties
-    property color glassBg: Qt.rgba(1, 1, 1, 0.85)
-    property color glassBorder: Qt.rgba(1, 1, 1, 0.6)
-    property int glassRadius: 8
+    // Card styling
+    property color glassBg: cardColor
+    property color glassBorder: borderColor
+    property int glassRadius: 6
 
     // Responsive breakpoints - based on root width to avoid feedback loop
     property real contentWidth: root.width
@@ -247,6 +256,12 @@ Item {
             collapsed: root.sidebarCollapsed || root.isCompact
             currentTab: root.activeTab
             Layout.fillHeight: true
+            bgColor: root.bgColor
+            cardColor: root.cardColor
+            borderColor: root.borderColor
+            textPrimary: root.textPrimary
+            textSecondary: root.textSecondary
+            accentColor: root.accentColor
             onTabSelected: (name) => { root.activeTab = name }
         }
 
@@ -261,8 +276,15 @@ Item {
             Header {
                 id: header
                 Layout.fillWidth: true
-                Layout.preferredHeight: 64
+                Layout.preferredHeight: 56
                 title: root.activeTab
+                bgColor: root.bgColor
+                cardColor: root.cardColor
+                borderColor: root.borderColor
+                textPrimary: root.textPrimary
+                textSecondary: root.textSecondary
+                accentColor: root.accentColor
+                dangerColor: root.dangerColor
                 onToggleSidebar: root.sidebarCollapsed = !root.sidebarCollapsed
                 onExitRequested: {
                     console.log("Header exit signal received in Dashboard")
@@ -297,17 +319,17 @@ Item {
 
                     ColumnLayout {
                         id: contentColumn
-                        width: contentFlickable.width - (isCompact ? 30 : 60)
-                        x: isCompact ? 15 : 30
-                        y: isCompact ? 15 : 30
-                        spacing: isCompact ? 15 : 30
+                        width: contentFlickable.width - (isCompact ? 24 : 40)
+                        x: isCompact ? 12 : 20
+                        y: isCompact ? 12 : 20
+                        spacing: isCompact ? 12 : 20
 
                     // Top Stats - Responsive Grid with Real Data
                     GridLayout {
                         Layout.fillWidth: true
                         columns: isCompact ? 2 : (isMedium ? 2 : 4)
-                        rowSpacing: isCompact ? 10 : 20
-                        columnSpacing: isCompact ? 10 : 20
+                        rowSpacing: isCompact ? 8 : 16
+                        columnSpacing: isCompact ? 8 : 16
 
                         // Animations
                         // Animations
@@ -325,7 +347,7 @@ Item {
                             icon: "\uf500"  // users (user-friends)
                             iconColor: "#5B7C99"  // Steel blue
                             Layout.fillWidth: true
-                            Layout.preferredHeight: isCompact ? 70 : 90
+                            Layout.preferredHeight: isCompact ? 62 : 76
                             bgColor: glassBg; borderColor: glassBorder; radius: glassRadius
                         }
 
@@ -338,7 +360,7 @@ Item {
                             icon: "\uf1e5"  // binoculars (survey instruments)
                             iconColor: "#B8956A"  // Muted amber
                             Layout.fillWidth: true
-                            Layout.preferredHeight: isCompact ? 70 : 90
+                            Layout.preferredHeight: isCompact ? 62 : 76
                             bgColor: glassBg; borderColor: glassBorder; radius: glassRadius
                         }
 
@@ -348,7 +370,7 @@ Item {
                             icon: "\uf058"  // check-circle
                             iconColor: "#6B8E7F"  // Muted green
                             Layout.fillWidth: true
-                            Layout.preferredHeight: isCompact ? 70 : 90
+                            Layout.preferredHeight: isCompact ? 62 : 76
                             bgColor: glassBg; borderColor: glassBorder; radius: glassRadius
                         }
                     }
@@ -357,13 +379,13 @@ Item {
                     GridLayout {
                         Layout.fillWidth: true
                         columns: isCompact ? 1 : (isMedium ? 2 : 3)
-                        rowSpacing: isCompact ? 10 : 20
-                        columnSpacing: isCompact ? 10 : 20
+                        rowSpacing: isCompact ? 8 : 16
+                        columnSpacing: isCompact ? 8 : 16
 
                         // Weather Box - Real-time from Open-Meteo API
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: isCompact ? 150 : 180
+                            Layout.preferredHeight: isCompact ? 130 : 160
                             color: glassBg
                             radius: glassRadius
                             border.color: glassBorder
@@ -392,15 +414,15 @@ Item {
                                     Text {
                                         text: "\uf3c5"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: isCompact ? 12 : 14
-                                        color: "#321fdb"
+                                        font.pixelSize: isCompact ? 10 : 11
+                                        color: accentColor
                                     }
                                     Text {
                                         text: projectName
                                         font.family: "Codec Pro"
-                                        font.pixelSize: isCompact ? 12 : 14
+                                        font.pixelSize: isCompact ? 10 : 11
                                         font.weight: Font.Medium
-                                        color: "#333333"
+                                        color: textPrimary
                                         elide: Text.ElideRight
                                         Layout.fillWidth: true
                                     }
@@ -416,8 +438,8 @@ Item {
                                             anchors.centerIn: parent
                                             text: "\uf2f1"
                                             font.family: "Font Awesome 5 Pro Solid"
-                                            font.pixelSize: 10
-                                            color: weatherLoading ? "#321fdb" : "#9da5b1"
+                                            font.pixelSize: 9
+                                            color: weatherLoading ? accentColor : textSecondary
 
                                             RotationAnimation on rotation {
                                                 running: weatherLoading
@@ -448,9 +470,9 @@ Item {
                                     Text {
                                         text: weatherIcon
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: isCompact ? 24 : 32
+                                        font.pixelSize: isCompact ? 16 : 18
                                         color: weatherCondition.indexOf("Rain") >= 0 ? "#3399ff" :
-                                               weatherCondition.indexOf("Cloud") >= 0 ? "#768192" :
+                                               weatherCondition.indexOf("Cloud") >= 0 ? textSecondary :
                                                weatherCondition.indexOf("Thunder") >= 0 ? "#9933ff" : "#f9b115"
                                     }
 
@@ -459,15 +481,15 @@ Item {
                                         Text {
                                             text: weatherLoading ? "--°C" : Math.round(weatherTemp) + "°C"
                                             font.family: "Codec Pro"
-                                            font.pixelSize: isCompact ? 22 : 28
+                                            font.pixelSize: isCompact ? 14 : 18
                                             font.weight: Font.Bold
-                                            color: "#333333"
+                                            color: textPrimary
                                         }
                                         Text {
                                             text: weatherCondition
                                             font.family: "Codec Pro"
-                                            font.pixelSize: isCompact ? 10 : 12
-                                            color: "#768192"
+                                            font.pixelSize: isCompact ? 9 : 10
+                                            color: textSecondary
                                         }
                                     }
                                 }
@@ -479,21 +501,21 @@ Item {
                                     Text {
                                         text: "\uf72e"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: isCompact ? 12 : 14
-                                        color: "#768192"
+                                        font.pixelSize: isCompact ? 10 : 11
+                                        color: textSecondary
                                     }
                                     Text {
                                         text: weatherLoading ? "-- km/h" : Math.round(windSpeed) + " km/h " + windDirection
                                         font.family: "Codec Pro"
-                                        font.pixelSize: isCompact ? 10 : 12
-                                        color: "#333333"
+                                        font.pixelSize: isCompact ? 9 : 10
+                                        color: textPrimary
                                     }
                                     Item { Layout.fillWidth: true }
                                     Text {
                                         text: lastUpdated || "--:--"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: isCompact ? 9 : 10
-                                        color: "#9da5b1"
+                                        font.pixelSize: isCompact ? 8 : 9
+                                        color: textSecondary
                                     }
                                 }
                             }
@@ -529,9 +551,9 @@ Item {
                                 Text {
                                     text: "Quick Actions"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: isCompact ? 12 : 14
+                                    font.pixelSize: isCompact ? 10 : 11
                                     font.bold: true
-                                    color: "#333333"
+                                    color: textPrimary
                                 }
 
                                 GridLayout {
@@ -554,13 +576,13 @@ Item {
                                             Text {
                                                 text: "\uf234"  // user-plus
                                                 font.family: "Font Awesome 5 Pro Solid"
-                                                font.pixelSize: isCompact ? 10 : 12
+                                                font.pixelSize: isCompact ? 9 : 10
                                                 color: "#5A6C7D"
                                             }
                                             Text {
                                                 text: "Add Personnel"
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: isCompact ? 9 : 11
+                                                font.pixelSize: isCompact ? 8 : 9
                                                 color: "#5A6C7D"
                                             }
                                         }
@@ -588,13 +610,13 @@ Item {
                                             Text {
                                                 text: "\uf0ad"  // wrench
                                                 font.family: "Font Awesome 5 Pro Solid"
-                                                font.pixelSize: isCompact ? 10 : 12
+                                                font.pixelSize: isCompact ? 9 : 10
                                                 color: "#5A6C7D"
                                             }
                                             Text {
                                                 text: "Add Instrument"
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: isCompact ? 9 : 11
+                                                font.pixelSize: isCompact ? 8 : 9
                                                 color: "#5A6C7D"
                                             }
                                         }
@@ -622,13 +644,13 @@ Item {
                                             Text {
                                                 text: "\uf0c0"  // users
                                                 font.family: "Font Awesome 5 Pro Solid"
-                                                font.pixelSize: isCompact ? 10 : 12
+                                                font.pixelSize: isCompact ? 9 : 10
                                                 color: "#5A6C7D"
                                             }
                                             Text {
                                                 text: "Personnel"
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: isCompact ? 9 : 11
+                                                font.pixelSize: isCompact ? 8 : 9
                                                 color: "#5A6C7D"
                                             }
                                         }
@@ -653,13 +675,13 @@ Item {
                                             Text {
                                                 text: "\uf013"  // cog
                                                 font.family: "Font Awesome 5 Pro Solid"
-                                                font.pixelSize: isCompact ? 10 : 12
+                                                font.pixelSize: isCompact ? 9 : 10
                                                 color: "#5A6C7D"
                                             }
                                             Text {
                                                 text: "Settings"
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: isCompact ? 9 : 11
+                                                font.pixelSize: isCompact ? 8 : 9
                                                 color: "#5A6C7D"
                                             }
                                         }
@@ -707,16 +729,16 @@ Item {
                                     Text {
                                         text: "Recent Activity"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: isCompact ? 12 : 14
+                                        font.pixelSize: isCompact ? 10 : 11
                                         font.bold: true
-                                        color: "#333333"
+                                        color: textPrimary
                                         Layout.fillWidth: true
                                     }
                                     Text {
                                         text: activityModel.count > 0 ? "" : "No activity yet"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: isCompact ? 9 : 10
-                                        color: "#9da5b1"
+                                        font.pixelSize: isCompact ? 8 : 9
+                                        color: textSecondary
                                         visible: activityModel.count === 0
                                     }
                                 }
@@ -746,23 +768,23 @@ Item {
                                             Text {
                                                 text: model.action
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: isCompact ? 10 : 12
+                                                font.pixelSize: isCompact ? 9 : 10
                                                 font.bold: true
-                                                color: "#333333"
+                                                color: textPrimary
                                             }
                                             Text {
                                                 text: model.detail
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: isCompact ? 9 : 10
-                                                color: "#768192"
+                                                font.pixelSize: isCompact ? 8 : 9
+                                                color: textSecondary
                                             }
                                         }
 
                                         Text {
                                             text: getRelativeTime(model.timestamp)
                                             font.family: "Codec Pro"
-                                            font.pixelSize: isCompact ? 9 : 10
-                                            color: "#9da5b1"
+                                            font.pixelSize: isCompact ? 8 : 9
+                                            color: textSecondary
                                         }
                                     }
                                 }
@@ -855,7 +877,7 @@ Item {
                                                     width: 28
                                                     height: 28
                                                     radius: 14
-                                                    color: "#e55353"
+                                                    color: dangerColor
                                                     border.color: "white"
                                                     border.width: 3
 
@@ -886,7 +908,7 @@ Item {
                                                         ctx.lineTo(width, 0);
                                                         ctx.lineTo(width / 2, height);
                                                         ctx.closePath();
-                                                        ctx.fillStyle = "#e55353";
+                                                        ctx.fillStyle = dangerColor;
                                                         ctx.fill();
                                                         ctx.strokeStyle = "white";
                                                         ctx.lineWidth = 2;
@@ -911,14 +933,14 @@ Item {
                                             height: 24
                                             radius: 4
                                             color: zoomInMa.containsMouse ? "#f0f0f0" : "white"
-                                            border.color: "#d8dbe0"
+                                            border.color: borderColor
 
                                             Text {
                                                 anchors.centerIn: parent
                                                 text: "\uf067"
                                                 font.family: "Font Awesome 5 Pro Solid"
-                                                font.pixelSize: 10
-                                                color: "#333333"
+                                                font.pixelSize: 9
+                                                color: textPrimary
                                             }
 
                                             MouseArea {
@@ -940,14 +962,14 @@ Item {
                                             height: 24
                                             radius: 4
                                             color: zoomOutMa.containsMouse ? "#f0f0f0" : "white"
-                                            border.color: "#d8dbe0"
+                                            border.color: borderColor
 
                                             Text {
                                                 anchors.centerIn: parent
                                                 text: "\uf068"
                                                 font.family: "Font Awesome 5 Pro Solid"
-                                                font.pixelSize: 10
-                                                color: "#333333"
+                                                font.pixelSize: 9
+                                                color: textPrimary
                                             }
 
                                             MouseArea {
@@ -969,14 +991,14 @@ Item {
                                             height: 24
                                             radius: 4
                                             color: centerMa.containsMouse ? "#f0f0f0" : "white"
-                                            border.color: "#d8dbe0"
+                                            border.color: borderColor
 
                                             Text {
                                                 anchors.centerIn: parent
                                                 text: "\uf05b"
                                                 font.family: "Font Awesome 5 Pro Solid"
-                                                font.pixelSize: 10
-                                                color: "#321fdb"
+                                                font.pixelSize: 9
+                                                color: accentColor
                                             }
 
                                             MouseArea {
@@ -1003,15 +1025,15 @@ Item {
                                         Text {
                                             text: "\uf5a0"
                                             font.family: "Font Awesome 5 Pro Solid"
-                                            font.pixelSize: 12
-                                            color: "#321fdb"
+                                            font.pixelSize: 10
+                                            color: accentColor
                                         }
                                         Text {
                                             text: "Project Location"
                                             font.family: "Codec Pro"
-                                            font.pixelSize: isCompact ? 11 : 12
+                                            font.pixelSize: isCompact ? 9 : 10
                                             font.weight: Font.Medium
-                                            color: "#333333"
+                                            color: textPrimary
                                         }
 
 
@@ -1020,8 +1042,8 @@ Item {
                                     Text {
                                         text: projectName
                                         font.family: "Codec Pro"
-                                        font.pixelSize: isCompact ? 10 : 11
-                                        color: "#768192"
+                                        font.pixelSize: isCompact ? 9 : 9
+                                        color: textSecondary
                                     }
 
                                     Item { Layout.fillHeight: true }
@@ -1034,14 +1056,14 @@ Item {
                                             Text {
                                                 text: "Y:"
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: 9
-                                                color: "#9da5b1"
+                                                font.pixelSize: 8
+                                                color: textSecondary
                                             }
                                             Text {
                                                 text: projectY.toFixed(3) + " m"
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: 9
-                                                color: "#3c4b64"
+                                                font.pixelSize: 8
+                                                color: textPrimary
                                             }
                                         }
 
@@ -1050,14 +1072,14 @@ Item {
                                             Text {
                                                 text: "X:"
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: 9
-                                                color: "#9da5b1"
+                                                font.pixelSize: 8
+                                                color: textSecondary
                                             }
                                             Text {
                                                 text: projectX.toFixed(3) + " m"
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: 9
-                                                color: "#3c4b64"
+                                                font.pixelSize: 8
+                                                color: textPrimary
                                             }
                                         }
                                     }
@@ -1068,10 +1090,10 @@ Item {
                         // Personnel Management
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: isCompact ? 180 : 220
-                            color: "white"
-                            radius: 4
-                            border.color: "#d8dbe0"
+                            Layout.preferredHeight: isCompact ? 160 : 200
+                            color: cardColor
+                            radius: 6
+                            border.color: borderColor
 
                             ColumnLayout {
                                 anchors.fill: parent
@@ -1083,22 +1105,22 @@ Item {
                                     Text {
                                         text: "\uf0c0"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 14
-                                        color: "#321fdb"
+                                        font.pixelSize: 11
+                                        color: accentColor
                                     }
                                     Text {
                                         text: "Personnel Management"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: isCompact ? 12 : 14
+                                        font.pixelSize: isCompact ? 10 : 11
                                         font.bold: true
-                                        color: "#333333"
+                                        color: textPrimary
                                     }
                                     Item { Layout.fillWidth: true }
                                     Rectangle {
                                         width: addPersonnelRow.width + 12
                                         height: 22
                                         radius: 4
-                                        color: Qt.lighter("#321fdb", 1.85)
+                                        color: Qt.lighter(accentColor, 1.85)
 
                                         RowLayout {
                                             id: addPersonnelRow
@@ -1107,14 +1129,14 @@ Item {
                                             Text {
                                                 text: "\uf067"
                                                 font.family: "Font Awesome 5 Pro Solid"
-                                                font.pixelSize: 9
-                                                color: "#321fdb"
+                                                font.pixelSize: 8
+                                                color: accentColor
                                             }
                                             Text {
                                                 text: "Add"
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: 9
-                                                color: "#321fdb"
+                                                font.pixelSize: 8
+                                                color: accentColor
                                             }
                                         }
 
@@ -1140,15 +1162,15 @@ Item {
                                         width: ListView.view.width
                                         height: 36
                                         radius: 4
-                                        color: index % 2 === 0 ? "#f9f9f9" : "white"
+                                        color: index % 2 === 0 ? Qt.lighter(cardColor, 1.02) : cardColor
 
                                         property color statusColor: {
                                             switch(modelData.status) {
-                                                case "On Site": return "#2eb85c"
-                                                case "Off Site": return "#f9b115"
-                                                case "On Leave": return "#39f"
-                                                case "Off Duty": return "#9da5b1"
-                                                default: return "#9da5b1"
+                                                case "On Site": return successColor
+                                                case "Off Site": return warningColor
+                                                case "On Leave": return infoColor
+                                                case "Off Duty": return textSecondary
+                                                default: return textSecondary
                                             }
                                         }
 
@@ -1162,15 +1184,15 @@ Item {
                                                 width: 28
                                                 height: 28
                                                 radius: 14
-                                                color: Qt.lighter("#321fdb", 1.7)
+                                                color: Qt.lighter(accentColor, 1.7)
 
                                                 Text {
                                                     anchors.centerIn: parent
                                                     text: modelData.name ? modelData.name.charAt(0) : "?"
                                                     font.family: "Codec Pro"
-                                                    font.pixelSize: 12
+                                                    font.pixelSize: 10
                                                     font.bold: true
-                                                    color: "#321fdb"
+                                                    color: accentColor
                                                 }
                                             }
 
@@ -1180,15 +1202,15 @@ Item {
                                                 Text {
                                                     text: modelData.name
                                                     font.family: "Codec Pro"
-                                                    font.pixelSize: 11
+                                                    font.pixelSize: 9
                                                     font.bold: true
-                                                    color: "#333333"
+                                                    color: textPrimary
                                                 }
                                                 Text {
                                                     text: modelData.role
                                                     font.family: "Codec Pro"
-                                                    font.pixelSize: 9
-                                                    color: "#768192"
+                                                    font.pixelSize: 8
+                                                    color: textSecondary
                                                 }
                                             }
 
@@ -1203,7 +1225,7 @@ Item {
                                                     anchors.centerIn: parent
                                                     text: modelData.status
                                                     font.family: "Codec Pro"
-                                                    font.pixelSize: 9
+                                                    font.pixelSize: 8
                                                     color: statusColor
                                                 }
                                             }
@@ -1222,8 +1244,8 @@ Item {
                                             anchors.centerIn: parent
                                             text: "No personnel added yet"
                                             font.family: "Codec Pro"
-                                            font.pixelSize: 12
-                                            color: "#9da5b1"
+                                            font.pixelSize: 10
+                                            color: textSecondary
                                         }
                                     }
                                 }
@@ -1236,7 +1258,7 @@ Item {
                             Layout.preferredHeight: isCompact ? 180 : 220
                             color: "white"
                             radius: 4
-                            border.color: "#d8dbe0"
+                            border.color: borderColor
 
                             ColumnLayout {
                                 anchors.fill: parent
@@ -1248,22 +1270,22 @@ Item {
                                     Text {
                                         text: "\uf1e5"  // binoculars - matches stat tile
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 14
-                                        color: "#e55353"
+                                        font.pixelSize: 11
+                                        color: dangerColor
                                     }
                                     Text {
                                         text: "Instruments Management"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: isCompact ? 12 : 14
+                                        font.pixelSize: isCompact ? 10 : 11
                                         font.bold: true
-                                        color: "#333333"
+                                        color: textPrimary
                                     }
                                     Item { Layout.fillWidth: true }
                                     Rectangle {
                                         width: addInstrumentRow.width + 12
                                         height: 22
                                         radius: 4
-                                        color: Qt.lighter("#e55353", 1.85)
+                                        color: Qt.lighter(dangerColor, 1.85)
 
                                         RowLayout {
                                             id: addInstrumentRow
@@ -1272,14 +1294,14 @@ Item {
                                             Text {
                                                 text: "\uf067"
                                                 font.family: "Font Awesome 5 Pro Solid"
-                                                font.pixelSize: 9
-                                                color: "#e55353"
+                                                font.pixelSize: 8
+                                                color: dangerColor
                                             }
                                             Text {
                                                 text: "Add"
                                                 font.family: "Codec Pro"
-                                                font.pixelSize: 9
-                                                color: "#e55353"
+                                                font.pixelSize: 8
+                                                color: dangerColor
                                             }
                                         }
 
@@ -1312,8 +1334,8 @@ Item {
                                                 case "Available": return "#2eb85c"
                                                 case "In Use": return "#39f"
                                                 case "Calibration": return "#f9b115"
-                                                case "Maintenance": return "#e55353"
-                                                default: return "#768192"
+                                                case "Maintenance": return dangerColor
+                                                default: return textSecondary
                                             }
                                         }
 
@@ -1327,14 +1349,14 @@ Item {
                                                 width: 28
                                                 height: 28
                                                 radius: 6
-                                                color: Qt.lighter("#e55353", 1.7)
+                                                color: Qt.lighter(dangerColor, 1.7)
 
                                                 Text {
                                                     anchors.centerIn: parent
                                                     text: "\uf542"
                                                     font.family: "Font Awesome 5 Pro Solid"
-                                                    font.pixelSize: 11
-                                                    color: "#e55353"
+                                                    font.pixelSize: 9
+                                                    color: dangerColor
                                                 }
                                             }
 
@@ -1344,28 +1366,28 @@ Item {
                                                 Text {
                                                     text: modelData.name
                                                     font.family: "Codec Pro"
-                                                    font.pixelSize: 11
+                                                    font.pixelSize: 9
                                                     font.bold: true
-                                                    color: "#333333"
+                                                    color: textPrimary
                                                 }
                                                 RowLayout {
                                                     spacing: 8
                                                     Text {
                                                         text: modelData.type
                                                         font.family: "Codec Pro"
-                                                        font.pixelSize: 9
-                                                        color: "#768192"
+                                                        font.pixelSize: 8
+                                                        color: textSecondary
                                                     }
                                                     Text {
                                                         text: "•"
-                                                        font.pixelSize: 9
-                                                        color: "#d8dbe0"
+                                                        font.pixelSize: 8
+                                                        color: borderColor
                                                     }
                                                     Text {
                                                         text: modelData.serial || "-"
                                                         font.family: "Codec Pro"
-                                                        font.pixelSize: 9
-                                                        color: "#9da5b1"
+                                                        font.pixelSize: 8
+                                                        color: textSecondary
                                                     }
                                                 }
                                             }
@@ -1381,7 +1403,7 @@ Item {
                                                     anchors.centerIn: parent
                                                     text: modelData.status
                                                     font.family: "Codec Pro"
-                                                    font.pixelSize: 9
+                                                    font.pixelSize: 8
                                                     color: statusColor
                                                 }
                                             }
@@ -1400,8 +1422,8 @@ Item {
                                             anchors.centerIn: parent
                                             text: "No instruments added yet"
                                             font.family: "Codec Pro"
-                                            font.pixelSize: 12
-                                            color: "#9da5b1"
+                                            font.pixelSize: 10
+                                            color: textSecondary
                                         }
                                     }
                                 }

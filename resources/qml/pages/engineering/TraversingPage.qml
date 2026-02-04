@@ -7,16 +7,16 @@ Item {
     id: root
 
     // Theme
-    property color bgColor: "#f4f6f9"
+    property color bgColor: "#f6f7f9"
     property color cardColor: "#ffffff"
-    property color accentColor: "#321fdb"
-    property color textPrimary: "#2c384a"
-    property color textSecondary: "#8a94a6"
-    property color borderColor: "#e4e7eb"
-    property color successColor: "#2eb85c"
-    property color warningColor: "#f9b115"
-    property color dangerColor: "#e55353"
-    property color infoColor: "#3399ff"
+    property color accentColor: "#2563eb"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color borderColor: "#d0d7de"
+    property color successColor: "#16a34a"
+    property color warningColor: "#f59e0b"
+    property color dangerColor: "#dc2626"
+    property color infoColor: "#0ea5e9"
 
     // Traverse mode
     property int traverseMode: 0
@@ -181,7 +181,7 @@ Item {
                             anchors.centerIn: parent
                             text: "\uf124"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 16
+                            font.pixelSize: 12
                             color: accentColor
                         }
                     }
@@ -191,14 +191,14 @@ Item {
                         Text {
                             text: "Traverse"
                             font.family: "Codec Pro"
-                            font.pixelSize: 16
+                            font.pixelSize: 12
                             font.weight: Font.DemiBold
                             color: textPrimary
                         }
                         Text {
                             text: "Bowditch Adjustment"
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 9
                             color: textSecondary
                         }
                     }
@@ -220,7 +220,7 @@ Item {
                     Text {
                         text: "Traverse Type"
                         font.family: "Codec Pro"
-                        font.pixelSize: 11
+                        font.pixelSize: 9
                         font.weight: Font.Medium
                         color: textSecondary
                     }
@@ -249,13 +249,13 @@ Item {
                                     Text {
                                         text: "\uf0e2"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 10
+                                        font.pixelSize: 9
                                         color: isLoopTraverse ? "white" : textSecondary
                                     }
                                     Text {
                                         text: "Closed Loop"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 9
                                         font.weight: isLoopTraverse ? Font.DemiBold : Font.Normal
                                         color: isLoopTraverse ? "white" : textSecondary
                                     }
@@ -280,13 +280,13 @@ Item {
                                     Text {
                                         text: "\uf337"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 10
+                                        font.pixelSize: 9
                                         color: !isLoopTraverse ? "white" : textSecondary
                                     }
                                     Text {
                                         text: "Link"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 9
                                         font.weight: !isLoopTraverse ? Font.DemiBold : Font.Normal
                                         color: !isLoopTraverse ? "white" : textSecondary
                                     }
@@ -317,7 +317,7 @@ Item {
                         Text {
                             text: "Starting Point"
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 9
                             font.weight: Font.Medium
                             color: textSecondary
                         }
@@ -339,7 +339,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: openingStationName
                                 font.family: "Codec Pro"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 font.weight: Font.Medium
                                 color: textPrimary
                                 leftPadding: 8
@@ -359,7 +359,7 @@ Item {
                                     Layout.fillWidth: true
                                     text: openingX.toFixed(3)
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 9
                                     color: textPrimary
                                     horizontalAlignment: Text.AlignHCenter
                                     background: Rectangle {
@@ -371,14 +371,14 @@ Item {
                                 Text {
                                     text: "E"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 10
+                                    font.pixelSize: 9
                                     color: successColor
                                 }
                                 TextField {
                                     Layout.fillWidth: true
                                     text: openingY.toFixed(3)
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 9
                                     color: textPrimary
                                     horizontalAlignment: Text.AlignHCenter
                                     background: Rectangle {
@@ -390,7 +390,7 @@ Item {
                                 Text {
                                     text: "N"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 10
+                                    font.pixelSize: 9
                                     color: successColor
                                 }
                             }
@@ -414,7 +414,7 @@ Item {
                         Text {
                             text: "Closing Point (Known)"
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 9
                             font.weight: Font.Medium
                             color: textSecondary
                         }
@@ -436,7 +436,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: closingStationName
                                 font.family: "Codec Pro"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 font.weight: Font.Medium
                                 color: textPrimary
                                 leftPadding: 8
@@ -456,24 +456,24 @@ Item {
                                     Layout.fillWidth: true
                                     text: closingX.toFixed(3)
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 9
                                     color: textPrimary
                                     horizontalAlignment: Text.AlignHCenter
                                     background: Rectangle { color: "white"; radius: 4 }
                                     onEditingFinished: { closingX = parseFloat(text) || 0; calculateTraverse() }
                                 }
-                                Text { text: "E"; font.family: "Codec Pro"; font.pixelSize: 10; color: dangerColor }
+                                Text { text: "E"; font.family: "Codec Pro"; font.pixelSize: 9; color: dangerColor }
                                 TextField {
                                     Layout.fillWidth: true
                                     text: closingY.toFixed(3)
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 9
                                     color: textPrimary
                                     horizontalAlignment: Text.AlignHCenter
                                     background: Rectangle { color: "white"; radius: 4 }
                                     onEditingFinished: { closingY = parseFloat(text) || 0; calculateTraverse() }
                                 }
-                                Text { text: "N"; font.family: "Codec Pro"; font.pixelSize: 10; color: dangerColor }
+                                Text { text: "N"; font.family: "Codec Pro"; font.pixelSize: 9; color: dangerColor }
                             }
                         }
                     }
@@ -491,7 +491,7 @@ Item {
                     Layout.topMargin: 16
                     text: "ADJUSTMENT RESULTS"
                     font.family: "Codec Pro"
-                    font.pixelSize: 10
+                    font.pixelSize: 9
                     font.weight: Font.Bold
                     color: textSecondary
                     font.letterSpacing: 1
@@ -522,7 +522,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: "\uf546"
                                     font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 9
                                     color: infoColor
                                 }
                             }
@@ -531,14 +531,14 @@ Item {
                                 Text {
                                     text: totalDistance.toFixed(3) + " m"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 14
+                                    font.pixelSize: 11
                                     font.weight: Font.Bold
                                     color: textPrimary
                                 }
                                 Text {
                                     text: "Total Distance"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 9
+                                    font.pixelSize: 8
                                     color: textSecondary
                                 }
                             }
@@ -565,7 +565,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: "\uf12a"
                                     font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 9
                                     color: linearMisclose < 0.05 ? successColor : dangerColor
                                 }
                             }
@@ -574,14 +574,14 @@ Item {
                                 Text {
                                     text: linearMisclose.toFixed(4) + " m"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 14
+                                    font.pixelSize: 11
                                     font.weight: Font.Bold
                                     color: textPrimary
                                 }
                                 Text {
                                     text: "Linear Misclose"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 9
+                                    font.pixelSize: 8
                                     color: textSecondary
                                 }
                             }
@@ -608,7 +608,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: "\uf2f1"
                                     font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 11
+                                    font.pixelSize: 9
                                     color: getAccuracyGrade().color
                                 }
                             }
@@ -617,7 +617,7 @@ Item {
                                 Text {
                                     text: "1 : " + (accuracy > 0 ? accuracy.toFixed(0) : "∞")
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 16
+                                    font.pixelSize: 12
                                     font.weight: Font.Bold
                                     color: textPrimary
                                 }
@@ -626,7 +626,7 @@ Item {
                                     Text {
                                         text: "Accuracy"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 9
+                                        font.pixelSize: 8
                                         color: textSecondary
                                     }
                                     Rectangle {
@@ -667,13 +667,13 @@ Item {
                             Text {
                                 text: "\uf1ec"
                                 font.family: "Font Awesome 5 Pro Solid"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 color: "white"
                             }
                             Text {
                                 text: "Calculate Bowditch"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 13
+                                font.pixelSize: 11
                                 font.weight: Font.Medium
                                 color: "white"
                             }
@@ -699,8 +699,8 @@ Item {
                             contentItem: RowLayout {
                                 spacing: 6
                                 Item { Layout.fillWidth: true }
-                                Text { text: "\uf0c7"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: successColor }
-                                Text { text: "Save"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                                Text { text: "\uf0c7"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 9; color: successColor }
+                                Text { text: "Save"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
                                 Item { Layout.fillWidth: true }
                             }
 
@@ -720,8 +720,8 @@ Item {
                             contentItem: RowLayout {
                                 spacing: 6
                                 Item { Layout.fillWidth: true }
-                                Text { text: "\uf1c3"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: infoColor }
-                                Text { text: "Export"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                                Text { text: "\uf1c3"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 9; color: infoColor }
+                                Text { text: "Export"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
                                 Item { Layout.fillWidth: true }
                             }
 
@@ -766,7 +766,7 @@ Item {
                         Text {
                             text: "\uf0ce"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 16
+                            font.pixelSize: 12
                             color: accentColor
                         }
 
@@ -775,14 +775,14 @@ Item {
                             Text {
                                 text: "Traverse Stations"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 15
+                                font.pixelSize: 12
                                 font.weight: Font.DemiBold
                                 color: textPrimary
                             }
                             Text {
                                 text: stationsModel.count + " stations"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 11
+                                font.pixelSize: 9
                                 color: textSecondary
                             }
                         }
@@ -793,8 +793,8 @@ Item {
                             height: 36
                             contentItem: RowLayout {
                                 spacing: 6
-                                Text { text: "\uf067"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: "white" }
-                                Text { text: "Add Station"; font.family: "Codec Pro"; font.pixelSize: 12; font.weight: Font.Medium; color: "white" }
+                                Text { text: "\uf067"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 9; color: "white" }
+                                Text { text: "Add Station"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Medium; color: "white" }
                             }
                             background: Rectangle {
                                 color: parent.pressed ? Qt.darker(accentColor, 1.1) : (parent.hovered ? Qt.lighter(accentColor, 1.1) : accentColor)
@@ -808,8 +808,8 @@ Item {
                             height: 36
                             contentItem: RowLayout {
                                 spacing: 6
-                                Text { text: "\uf2f9"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: dangerColor }
-                                Text { text: "Reset"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                                Text { text: "\uf2f9"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 9; color: dangerColor }
+                                Text { text: "Reset"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
                             }
                             background: Rectangle {
                                 color: parent.pressed ? "#f0f0f0" : (parent.hovered ? "#f8f8f8" : "transparent")
@@ -868,7 +868,7 @@ Item {
                                             Layout.alignment: Qt.AlignHCenter
                                             text: label
                                             font.family: "Codec Pro"
-                                            font.pixelSize: 11
+                                            font.pixelSize: 9
                                             font.weight: Font.DemiBold
                                             color: textPrimary
                                         }
@@ -877,7 +877,7 @@ Item {
                                             visible: sublabel !== ""
                                             text: sublabel
                                             font.family: "Codec Pro"
-                                            font.pixelSize: 9
+                                            font.pixelSize: 8
                                             color: textSecondary
                                         }
                                     }
@@ -955,7 +955,7 @@ Item {
                                             horizontalAlignment: Text.AlignHCenter
                                             verticalAlignment: Text.AlignVCenter
                                             font.family: "Codec Pro"
-                                            font.pixelSize: 12
+                                            font.pixelSize: 10
                                             font.bold: bold
                                             color: readOnly ? textSecondary : textColor
                                             readOnly: parent.readOnly
@@ -997,7 +997,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: index + 1
                                             font.family: "Codec Pro"
-                                            font.pixelSize: 11
+                                            font.pixelSize: 9
                                             color: textSecondary
                                         }
                                         Rectangle {
@@ -1058,7 +1058,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: "\uf1f8"
                                             font.family: "Font Awesome 5 Pro Solid"
-                                            font.pixelSize: 12
+                                            font.pixelSize: 10
                                             color: delMA.containsMouse ? dangerColor : textSecondary
                                             visible: index > 0
                                         }
@@ -1105,7 +1105,7 @@ Item {
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: "TOTALS"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 9
                                         font.weight: Font.Bold
                                         color: textPrimary
                                     }
@@ -1117,7 +1117,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: totalDistance.toFixed(3)
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 12
+                                        font.pixelSize: 10
                                         font.bold: true
                                         color: textPrimary
                                     }
@@ -1128,7 +1128,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: closureX.toFixed(3)
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 9
                                         color: textSecondary
                                     }
                                 }
@@ -1138,7 +1138,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: closureY.toFixed(3)
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 9
                                         color: textSecondary
                                     }
                                 }

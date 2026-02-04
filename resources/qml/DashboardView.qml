@@ -16,9 +16,36 @@ Item {
     property real lightIntensity: 45
 
     property var currentTime: new Date()
+    // Compact light theme (consistent with discipline selection + project management)
+    property color bgColor: "#f6f7f9"
+    property color cardColor: "#ffffff"
+    property color borderColor: "#d0d7de"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color accentColor: "#2563eb"
 
-    // Theme properties mapped from parent or default
-    property string bgGradientStart: '#ffffff'
+    // Back-compat bindings for child components
+    property color textColor: textPrimary
+    property color glassyBgColor: cardColor
+
+    property string bgGradientStart: "#f6f7f9"
+    property string bgGradientStop: "#eef1f5"
+
+    property int pageMargin: Math.max(16, Math.min(32, Math.round(Math.min(width, height) * 0.04)))
+
+    property real introProgress: 0
+
+    Component.onCompleted: introAnim.start()
+
+    NumberAnimation {
+        id: introAnim
+        target: root
+        property: "introProgress"
+        from: 0
+        to: 1
+        duration: 200
+        easing.type: Easing.OutCubic
+    }
     property string bgGradientStop: '#f0f0f0'
 
     QtObject {
@@ -38,7 +65,7 @@ Item {
         ListElement {
             label: 'Living'
             icon: '\uf4b8'
-            size: 28
+            size: 20
             temperature: 26
             humidity: 47
             heating: 35
@@ -49,7 +76,7 @@ Item {
         ListElement {
             label: 'Kitchen'
             icon: '\uf79a'
-            size: 22
+            size: 18
             temperature: 32
             humidity: 67
             heating: 22
@@ -60,7 +87,7 @@ Item {
         ListElement {
             label: 'Bedroom'
             icon: '\uf236'
-            size: 28
+            size: 20
             temperature: 24
             humidity: 40
             heating: 40
@@ -71,7 +98,7 @@ Item {
         ListElement {
             label: 'Laundry'
             icon: '\uf553'
-            size: 22
+            size: 18
             temperature: 28
             humidity: 77
             heating: 56
@@ -131,7 +158,9 @@ Item {
 
         Item {
             anchors.fill: parent
-            anchors.margins: 76.4
+            anchors.margins: pageMargin
+            opacity: root.introProgress
+            transform: Translate { y: (1 - root.introProgress) * 8 }
 
             LeftPane { id: leftItem }
 

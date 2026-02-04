@@ -6,17 +6,17 @@ import QtQuick.Dialogs
 Item {
     id: root
 
-    // CoreUI Colors
-    property color bgColor: "#ebedef"
+    // Compact light theme
+    property color bgColor: "#f6f7f9"
     property color cardColor: "#ffffff"
-    property color accentColor: "#321fdb"
-    property color textPrimary: "#3c4b64"
-    property color textSecondary: "#768192"
-    property color borderColor: "#d8dbe0"
-    property color successColor: "#2eb85c"
-    property color warningColor: "#f9b115"
-    property color dangerColor: "#e55353"
-    property color infoColor: "#39f"
+    property color accentColor: "#2563eb"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color borderColor: "#d0d7de"
+    property color successColor: "#16a34a"
+    property color warningColor: "#f59e0b"
+    property color dangerColor: "#dc2626"
+    property color infoColor: "#0ea5e9"
 
     // Settings properties (would be persisted via QSettings in production)
     property int distanceUnit: 0  // 0=Meters, 1=Feet, 2=US Survey Feet
@@ -83,7 +83,7 @@ Item {
                 Text {
                     text: "Settings"
                     font.family: "Codec Pro"
-                    font.pixelSize: 24
+                    font.pixelSize: 16
                     font.bold: true
                     color: textPrimary
                 }
@@ -95,7 +95,7 @@ Item {
                     id: statusMessage
                     visible: false
                     font.family: "Codec Pro"
-                    font.pixelSize: 12
+                    font.pixelSize: 10
                 }
             }
 
@@ -122,9 +122,9 @@ Item {
                         Rectangle {
                             width: 32; height: 32; radius: 6
                             color: Qt.lighter(infoColor, 1.85)
-                            Text { anchors.centerIn: parent; text: "\uf545"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 14; color: infoColor }
+                            Text { anchors.centerIn: parent; text: "\uf545"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: infoColor }
                         }
-                        Text { text: "Units & Precision"; font.family: "Codec Pro"; font.pixelSize: 16; font.bold: true; color: textPrimary }
+                        Text { text: "Units & Precision"; font.family: "Codec Pro"; font.pixelSize: 12; font.bold: true; color: textPrimary }
                     }
 
                     GridLayout {
@@ -136,7 +136,7 @@ Item {
                         // Distance Units
                         ColumnLayout {
                             spacing: 6
-                            Text { text: "Distance Units"; font.family: "Codec Pro"; font.pixelSize: 12; color: textSecondary }
+                            Text { text: "Distance Units"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
                             ComboBox {
                                 id: distanceCombo
                                 Layout.preferredWidth: 200
@@ -154,7 +154,7 @@ Item {
                                     leftPadding: 10
                                     text: distanceCombo.displayText
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 10
                                     color: textPrimary
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -164,7 +164,7 @@ Item {
                         // Angle Units
                         ColumnLayout {
                             spacing: 6
-                            Text { text: "Angle Units"; font.family: "Codec Pro"; font.pixelSize: 12; color: textSecondary }
+                            Text { text: "Angle Units"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
                             ComboBox {
                                 id: angleCombo
                                 Layout.preferredWidth: 200
@@ -182,7 +182,7 @@ Item {
                                     leftPadding: 10
                                     text: angleCombo.displayText
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 10
                                     color: textPrimary
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -192,7 +192,7 @@ Item {
                         // Area Units
                         ColumnLayout {
                             spacing: 6
-                            Text { text: "Area Units"; font.family: "Codec Pro"; font.pixelSize: 12; color: textSecondary }
+                            Text { text: "Area Units"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
                             ComboBox {
                                 id: areaCombo
                                 Layout.preferredWidth: 200
@@ -210,7 +210,7 @@ Item {
                                     leftPadding: 10
                                     text: areaCombo.displayText
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 10
                                     color: textPrimary
                                     verticalAlignment: Text.AlignVCenter
                                 }
@@ -220,7 +220,7 @@ Item {
                         // Decimal Places
                         ColumnLayout {
                             spacing: 6
-                            Text { text: "Decimal Places"; font.family: "Codec Pro"; font.pixelSize: 12; color: textSecondary }
+                            Text { text: "Decimal Places"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
                             RowLayout {
                                 spacing: 10
                                 SpinBox {
@@ -239,13 +239,13 @@ Item {
                                     contentItem: Text {
                                         text: decimalSpin.value
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 12
+                                        font.pixelSize: 10
                                         color: textPrimary
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                     }
                                 }
-                                Text { text: "e.g. " + (123.456789).toFixed(decimalPlaces); font.family: "Codec Pro"; font.pixelSize: 11; color: textSecondary }
+                                Text { text: "e.g. " + (123.456789).toFixed(decimalPlaces); font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
                             }
                         }
                     }
@@ -275,9 +275,9 @@ Item {
                         Rectangle {
                             width: 32; height: 32; radius: 6
                             color: Qt.lighter(infoColor, 1.85)
-                            Text { anchors.centerIn: parent; text: "\uf05a"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 14; color: infoColor }
+                            Text { anchors.centerIn: parent; text: "\uf05a"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: infoColor }
                         }
-                        Text { text: "Current Session"; font.family: "Codec Pro"; font.pixelSize: 16; font.bold: true; color: textPrimary }
+                        Text { text: "Current Session"; font.family: "Codec Pro"; font.pixelSize: 12; font.bold: true; color: textPrimary }
                     }
 
                     GridLayout {
@@ -285,14 +285,14 @@ Item {
                         columnSpacing: 20
                         rowSpacing: 8
 
-                        Text { text: "Connection:"; font.family: "Codec Pro"; font.pixelSize: 12; color: textSecondary }
-                        Text { text: Database.isConnected ? "Connected" : "Disconnected"; font.family: "Codec Pro"; font.pixelSize: 12; font.weight: Font.Medium; color: Database.isConnected ? successColor : dangerColor }
+                        Text { text: "Connection:"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
+                        Text { text: Database.isConnected ? "Connected" : "Disconnected"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Medium; color: Database.isConnected ? successColor : dangerColor }
 
-                        Text { text: "Project:"; font.family: "Codec Pro"; font.pixelSize: 12; color: textSecondary }
-                        Text { text: Database.currentProject || "None"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                        Text { text: "Project:"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
+                        Text { text: Database.currentProject || "None"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
-                        Text { text: "Discipline:"; font.family: "Codec Pro"; font.pixelSize: 12; color: textSecondary }
-                        Text { text: Database.currentDiscipline || "None"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                        Text { text: "Discipline:"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
+                        Text { text: Database.currentDiscipline || "None"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
                     }
                 }
             }

@@ -9,11 +9,12 @@ Rectangle {
     property string subValue: ""
     property string icon: ""
     property color iconColor: "#333333"
+    property color bgColor: "#ffffff"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color borderColor: "#d0d7de"
 
-    property color bgColor: "white"
-    property color borderColor: "#d8dbe0"
-
-    radius: 4
+    radius: 6
     color: bgColor
 
     border.color: borderColor
@@ -21,21 +22,21 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 15
-        spacing: 15
+        anchors.margins: 12
+        spacing: 12
 
         // Icon Box (Left)
         Rectangle {
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
-            radius: 8
+            Layout.preferredWidth: 32
+            Layout.preferredHeight: 32
+            radius: 6
             color: Qt.lighter(root.iconColor, 1.8) // Lighter background for icon
 
             Text {
                 anchors.centerIn: parent
                 text: root.icon
                 font.family: "Font Awesome 5 Pro Solid"
-                font.pixelSize: 18
+                font.pixelSize: 13
                 color: root.iconColor
             }
         }
@@ -48,25 +49,25 @@ Rectangle {
             Text {
                 text: root.value
                 font.family: "Codec Pro"
-                font.pixelSize: 18
+                font.pixelSize: 13
                 font.bold: true
-                color: "#333333"
+                color: textPrimary
             }
 
             Text {
                 text: root.label
                 font.family: "Codec Pro"
-                font.pixelSize: 11
+                font.pixelSize: 9
                 font.bold: true
-                color: "#768192"
+                color: textSecondary
             }
 
             Text {
                 visible: root.subValue.length > 0
                 text: root.subValue
                 font.family: "Codec Pro"
-                font.pixelSize: 10
-                color: "#9da5b1"
+                font.pixelSize: 9
+                color: textSecondary
             }
         }
     }

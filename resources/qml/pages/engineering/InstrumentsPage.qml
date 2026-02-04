@@ -8,22 +8,22 @@ Item {
     // Expose dialog for external access from dashboard
     property alias addInstrumentDialog: addInstrumentDialog
 
-    // CoreUI Colors
-    property color bgColor: "#ebedef"
+    // Compact light theme
+    property color bgColor: "#f6f7f9"
     property color cardColor: "#ffffff"
-    property color accentColor: "#321fdb"
-    property color textPrimary: "#3c4b64"
-    property color textSecondary: "#768192"
-    property color borderColor: "#d8dbe0"
-    property color successColor: "#2eb85c"
-    property color warningColor: "#f9b115"
-    property color dangerColor: "#e55353"
-    property color infoColor: "#3399ff"
+    property color accentColor: "#2563eb"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color borderColor: "#d0d7de"
+    property color successColor: "#16a34a"
+    property color warningColor: "#f59e0b"
+    property color dangerColor: "#dc2626"
+    property color infoColor: "#0ea5e9"
 
-    // Glass Effect Properties
-    property color glassBg: Qt.rgba(1, 1, 1, 0.85)
-    property color glassBorder: Qt.rgba(1, 1, 1, 0.6)
-    property int glassRadius: 8
+    // Card styling
+    property color glassBg: cardColor
+    property color glassBorder: borderColor
+    property int glassRadius: 6
 
     // Instruments data from database
     property var instrumentsList: Database.getInstruments()
@@ -65,7 +65,7 @@ Item {
 
     Flickable {
         anchors.fill: parent
-        anchors.margins: 20
+        anchors.margins: 16
         contentHeight: contentColumn.height
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -77,17 +77,17 @@ Item {
         ColumnLayout {
             id: contentColumn
             width: parent.width
-            spacing: 20
+            spacing: 16
 
             // Header Row
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 16
+                spacing: 12
 
                 Text {
                     text: "Instruments"
                     font.family: "Codec Pro"
-                    font.pixelSize: 24
+                    font.pixelSize: 16
                     font.bold: true
                     color: textPrimary
                 }
@@ -97,9 +97,9 @@ Item {
                 // Search Box
                 Rectangle {
                     Layout.preferredWidth: 250
-                    height: 38
+                    height: 32
                     color: cardColor
-                    radius: 4
+                    radius: 6
                     border.color: borderColor
 
                     RowLayout {
@@ -111,7 +111,7 @@ Item {
                         Text {
                             text: "\uf002"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 12
+                            font.pixelSize: 10
                             color: textSecondary
                         }
 
@@ -121,7 +121,7 @@ Item {
                             Layout.fillHeight: true
                             placeholderText: "Search instruments..."
                             font.family: "Codec Pro"
-                            font.pixelSize: 13
+                            font.pixelSize: 11
                             color: textPrimary
                             placeholderTextColor: textSecondary
                             background: Rectangle { color: "transparent" }
@@ -132,9 +132,9 @@ Item {
                 // Status Filter
                 Rectangle {
                     Layout.preferredWidth: 150
-                    height: 38
+                    height: 32
                     color: cardColor
-                    radius: 4
+                    radius: 6
                     border.color: borderColor
 
                     ComboBox {
@@ -142,7 +142,7 @@ Item {
                         anchors.fill: parent
                         model: ["All Status", "Available", "In Use", "Calibration", "Maintenance", "Out of Service"]
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
 
                         contentItem: Text {
                             leftPadding: 12
@@ -162,7 +162,7 @@ Item {
                             contentItem: Text {
                                 text: modelData
                                 font.family: "Codec Pro"
-                                font.pixelSize: 13
+                                font.pixelSize: 11
                                 color: textPrimary
                                 verticalAlignment: Text.AlignVCenter
                                 leftPadding: 8
@@ -200,9 +200,10 @@ Item {
                 // Add Button
                 Rectangle {
                     Layout.preferredWidth: 140
-                    height: 38
+                    height: 32
                     color: accentColor
-                    radius: 4
+                    radius: 6
+                    Behavior on color { ColorAnimation { duration: 120 } }
 
                     RowLayout {
                         anchors.centerIn: parent
@@ -211,14 +212,14 @@ Item {
                         Text {
                             text: "\uf067"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 12
+                            font.pixelSize: 10
                             color: "white"
                         }
 
                         Text {
                             text: "Add Instrument"
                             font.family: "Codec Pro"
-                            font.pixelSize: 13
+                            font.pixelSize: 11
                             color: "white"
                         }
                     }
@@ -254,27 +255,27 @@ Item {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 80
+                        height: 64
                         color: glassBg
                         radius: glassRadius
                         border.color: glassBorder
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 16
-                            spacing: 12
+                            anchors.margins: 12
+                            spacing: 10
 
                             Rectangle {
-                                width: 48
-                                height: 48
-                                radius: 24
+                                width: 36
+                                height: 36
+                                radius: 18
                                 color: Qt.lighter(modelData.color, 1.7)
 
                                 Text {
                                     anchors.centerIn: parent
                                     text: modelData.icon
                                     font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 18
+                                    font.pixelSize: 13
                                     color: modelData.color
                                 }
                             }
@@ -286,7 +287,7 @@ Item {
                                 Text {
                                     text: modelData.value
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 24
+                                    font.pixelSize: 16
                                     font.bold: true
                                     color: textPrimary
                                 }
@@ -294,7 +295,7 @@ Item {
                                 Text {
                                     text: modelData.label
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 10
                                     color: textSecondary
                                 }
                             }
@@ -330,15 +331,15 @@ Item {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.top: parent.top
-                    anchors.margins: 20
+                    anchors.margins: 16
                     spacing: 12
 
                     // Table Header
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 40
+                        height: 36
                         color: bgColor
-                        radius: 4
+                        radius: 6
 
                         RowLayout {
                             anchors.fill: parent
@@ -350,7 +351,7 @@ Item {
                                 Layout.preferredWidth: 200
                                 text: "Name"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 font.bold: true
                                 color: textSecondary
                             }
@@ -359,7 +360,7 @@ Item {
                                 Layout.preferredWidth: 150
                                 text: "Type"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 font.bold: true
                                 color: textSecondary
                             }
@@ -368,7 +369,7 @@ Item {
                                 Layout.preferredWidth: 150
                                 text: "Serial Number"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 font.bold: true
                                 color: textSecondary
                             }
@@ -377,7 +378,7 @@ Item {
                                 Layout.preferredWidth: 100
                                 text: "Status"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 font.bold: true
                                 color: textSecondary
                             }
@@ -386,7 +387,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: "Actions"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 font.bold: true
                                 color: textSecondary
                                 horizontalAlignment: Text.AlignRight
@@ -415,9 +416,9 @@ Item {
 
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 56
+                            height: 46
                             color: index % 2 === 0 ? "transparent" : Qt.lighter(bgColor, 1.02)
-                            radius: 4
+                            radius: 6
 
                             RowLayout {
                                 anchors.fill: parent
@@ -431,16 +432,16 @@ Item {
                                     spacing: 12
 
                                     Rectangle {
-                                        width: 36
-                                        height: 36
-                                        radius: 18
+                                        width: 30
+                                        height: 30
+                                        radius: 15
                                         color: Qt.lighter(accentColor, 1.7)
 
                                         Text {
                                             anchors.centerIn: parent
                                             text: getTypeIcon(modelData.type)
                                             font.family: "Font Awesome 5 Pro Solid"
-                                            font.pixelSize: 14
+                                            font.pixelSize: 11
                                             color: accentColor
                                         }
                                     }
@@ -449,7 +450,7 @@ Item {
                                         Layout.fillWidth: true
                                         text: modelData.name
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 13
+                                        font.pixelSize: 11
                                         font.bold: true
                                         color: textPrimary
                                         elide: Text.ElideRight
@@ -461,7 +462,7 @@ Item {
                                     Layout.preferredWidth: 150
                                     text: modelData.type
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 13
+                                    font.pixelSize: 11
                                     color: textSecondary
                                     elide: Text.ElideRight
                                 }
@@ -471,7 +472,7 @@ Item {
                                     Layout.preferredWidth: 150
                                     text: modelData.serial || "-"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 13
+                                    font.pixelSize: 11
                                     color: textSecondary
                                     elide: Text.ElideRight
                                 }
@@ -480,8 +481,8 @@ Item {
                                 Rectangle {
                                     Layout.preferredWidth: 100
                                     width: statusText.width + 16
-                                    height: 24
-                                    radius: 12
+                                    height: 20
+                                    radius: 10
                                     color: Qt.lighter(getStatusColor(modelData.status), 1.7)
 
                                     Text {
@@ -489,7 +490,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: modelData.status
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 9
                                         color: getStatusColor(modelData.status)
                                     }
                                 }
@@ -502,16 +503,16 @@ Item {
 
                                     // Edit Button
                                     Rectangle {
-                                        width: 32
-                                        height: 32
-                                        radius: 4
+                                        width: 26
+                                        height: 26
+                                        radius: 6
                                         color: mouseAreaEdit.containsMouse ? Qt.lighter(accentColor, 1.8) : "transparent"
 
                                         Text {
                                             anchors.centerIn: parent
                                             text: "\uf044"
                                             font.family: "Font Awesome 5 Pro Solid"
-                                            font.pixelSize: 14
+                                            font.pixelSize: 11
                                             color: accentColor
                                         }
 
@@ -533,16 +534,16 @@ Item {
 
                                     // Delete Button
                                     Rectangle {
-                                        width: 32
-                                        height: 32
-                                        radius: 4
+                                        width: 26
+                                        height: 26
+                                        radius: 6
                                         color: mouseAreaDelete.containsMouse ? Qt.lighter(dangerColor, 1.8) : "transparent"
 
                                         Text {
                                             anchors.centerIn: parent
                                             text: "\uf1f8"
                                             font.family: "Font Awesome 5 Pro Solid"
-                                            font.pixelSize: 14
+                                            font.pixelSize: 11
                                             color: dangerColor
                                         }
 
@@ -566,7 +567,7 @@ Item {
                     // Empty State
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 200
+                        height: 160
                         visible: instrumentsList.length === 0
                         color: "transparent"
 
@@ -585,7 +586,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: "\uf0ad"
                                     font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 24
+                                    font.pixelSize: 16
                                     color: accentColor
                                 }
                             }
@@ -594,7 +595,7 @@ Item {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: "No instruments found"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 16
+                                font.pixelSize: 12
                                 font.bold: true
                                 color: textPrimary
                             }
@@ -603,7 +604,7 @@ Item {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: "Add instruments to get started"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 13
+                                font.pixelSize: 11
                                 color: textSecondary
                             }
                         }
@@ -622,7 +623,7 @@ Item {
     Dialog {
         id: addInstrumentDialog
         anchors.centerIn: parent
-        width: 420
+        width: 380
         modal: true
         padding: 0
         clip: false
@@ -637,7 +638,7 @@ Item {
 
         header: Rectangle {
             color: cardColor
-            height: 56
+            height: 44
             radius: 6
 
             Rectangle {
@@ -649,13 +650,13 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
 
                 Text {
                     text: "Add New Instrument"
                     font.family: "Codec Pro"
-                    font.pixelSize: 16
+                    font.pixelSize: 12
                     font.bold: true
                     color: textPrimary
                 }
@@ -665,7 +666,7 @@ Item {
                 Text {
                     text: "\uf00d"
                     font.family: "Font Awesome 5 Pro Solid"
-                    font.pixelSize: 16
+                    font.pixelSize: 12
                     color: textSecondary
 
                     MouseArea {
@@ -686,26 +687,26 @@ Item {
             ColumnLayout {
                 id: dialogCol
                 width: scrollView.availableWidth
-                spacing: 16
+                spacing: 12
 
             Item { height: 4 }
 
             // Name Field
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
+                Layout.leftMargin: 16
+                Layout.rightMargin: 16
                 spacing: 6
 
-                Text { text: "Instrument Name *"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Instrument Name *"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 TextField {
                     id: addNameField
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 32
                     placeholderText: "e.g., Leica TS16"
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
                     color: textPrimary
                     placeholderTextColor: textSecondary
                     leftPadding: 12
@@ -721,19 +722,19 @@ Item {
             // Type Field
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
+                Layout.leftMargin: 16
+                Layout.rightMargin: 16
                 spacing: 6
 
-                Text { text: "Type *"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Type *"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 ComboBox {
                     id: addTypeCombo
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 32
                     model: ["Total Station", "GNSS Receiver", "Level", "Theodolite", "Laser Scanner", "Drone", "Measuring Tape", "Tripod", "Prism", "Other"]
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
 
                     contentItem: Text {
                         leftPadding: 12
@@ -751,11 +752,11 @@ Item {
 
                     delegate: ItemDelegate {
                         width: addTypeCombo.width
-                        height: 36
+                        height: 32
                         contentItem: Text {
                             text: modelData
                             font.family: "Codec Pro"
-                            font.pixelSize: 13
+                            font.pixelSize: 11
                             color: textPrimary
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: 8
@@ -799,15 +800,15 @@ Item {
                 Layout.rightMargin: 20
                 spacing: 6
 
-                Text { text: "Serial Number"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Serial Number"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 TextField {
                     id: addSerialField
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 32
                     placeholderText: "e.g., SN-2024-001"
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
                     color: textPrimary
                     placeholderTextColor: textSecondary
                     leftPadding: 12
@@ -827,15 +828,15 @@ Item {
                 Layout.rightMargin: 20
                 spacing: 6
 
-                Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 ComboBox {
                     id: addStatusCombo
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 32
                     model: ["Available", "In Use", "Calibration", "Maintenance", "Out of Service"]
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
 
                     contentItem: Text {
                         leftPadding: 12
@@ -853,11 +854,11 @@ Item {
 
                     delegate: ItemDelegate {
                         width: addStatusCombo.width
-                        height: 36
+                        height: 32
                         contentItem: Text {
                             text: modelData
                             font.family: "Codec Pro"
-                            font.pixelSize: 13
+                            font.pixelSize: 11
                             color: textPrimary
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: 8
@@ -900,7 +901,7 @@ Item {
 
         footer: Rectangle {
             color: bgColor
-            height: 60
+            height: 48
             radius: 6
 
             Rectangle {
@@ -912,24 +913,24 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
                 spacing: 12
 
                 Item { Layout.fillWidth: true }
 
                 Rectangle {
                     Layout.preferredWidth: 90
-                    height: 38
+                    height: 30
                     color: cardColor
-                    radius: 4
+                    radius: 6
                     border.color: borderColor
 
                     Text {
                         anchors.centerIn: parent
                         text: "Cancel"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: textSecondary
                     }
 
@@ -942,15 +943,15 @@ Item {
 
                 Rectangle {
                     Layout.preferredWidth: 120
-                    height: 38
-                    radius: 4
+                    height: 30
+                    radius: 6
                     color: addNameField.text.length > 0 ? accentColor : Qt.lighter(accentColor, 1.4)
 
                     Text {
                         anchors.centerIn: parent
                         text: "Add Instrument"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: "white"
                     }
 
@@ -983,7 +984,7 @@ Item {
     Dialog {
         id: editInstrumentDialog
         anchors.centerIn: parent
-        width: 420
+        width: 380
         modal: true
         padding: 0
         clip: false
@@ -998,7 +999,7 @@ Item {
 
         header: Rectangle {
             color: cardColor
-            height: 56
+            height: 44
             radius: 6
 
             Rectangle {
@@ -1010,13 +1011,13 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
 
                 Text {
                     text: "Edit Instrument"
                     font.family: "Codec Pro"
-                    font.pixelSize: 16
+                    font.pixelSize: 12
                     font.bold: true
                     color: textPrimary
                 }
@@ -1026,7 +1027,7 @@ Item {
                 Text {
                     text: "\uf00d"
                     font.family: "Font Awesome 5 Pro Solid"
-                    font.pixelSize: 16
+                    font.pixelSize: 12
                     color: textSecondary
 
                     MouseArea {
@@ -1039,7 +1040,7 @@ Item {
         }
 
         contentItem: ColumnLayout {
-            spacing: 16
+            spacing: 12
 
             Item { height: 4 }
 
@@ -1050,14 +1051,14 @@ Item {
                 Layout.rightMargin: 20
                 spacing: 6
 
-                Text { text: "Instrument Name *"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Instrument Name *"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 TextField {
                     id: editNameField
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 32
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
                     color: textPrimary
                     leftPadding: 12
 
@@ -1076,15 +1077,15 @@ Item {
                 Layout.rightMargin: 20
                 spacing: 6
 
-                Text { text: "Type *"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Type *"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 ComboBox {
                     id: editTypeCombo
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 32
                     model: ["Total Station", "GNSS Receiver", "Level", "Theodolite", "Laser Scanner", "Drone", "Measuring Tape", "Tripod", "Prism", "Other"]
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
 
                     contentItem: Text {
                         leftPadding: 12
@@ -1102,11 +1103,11 @@ Item {
 
                     delegate: ItemDelegate {
                         width: editTypeCombo.width
-                        height: 36
+                        height: 32
                         contentItem: Text {
                             text: modelData
                             font.family: "Codec Pro"
-                            font.pixelSize: 13
+                            font.pixelSize: 11
                             color: textPrimary
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: 8
@@ -1148,14 +1149,14 @@ Item {
                 Layout.rightMargin: 20
                 spacing: 6
 
-                Text { text: "Serial Number"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Serial Number"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 TextField {
                     id: editSerialField
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 32
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
                     color: textPrimary
                     leftPadding: 12
 
@@ -1174,15 +1175,15 @@ Item {
                 Layout.rightMargin: 20
                 spacing: 6
 
-                Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 ComboBox {
                     id: editStatusCombo
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 40
+                    Layout.preferredHeight: 32
                     model: ["Available", "In Use", "Calibration", "Maintenance", "Out of Service"]
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
 
                     contentItem: Text {
                         leftPadding: 12
@@ -1200,11 +1201,11 @@ Item {
 
                     delegate: ItemDelegate {
                         width: editStatusCombo.width
-                        height: 36
+                        height: 32
                         contentItem: Text {
                             text: modelData
                             font.family: "Codec Pro"
-                            font.pixelSize: 13
+                            font.pixelSize: 11
                             color: textPrimary
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: 8
@@ -1244,7 +1245,7 @@ Item {
 
         footer: Rectangle {
             color: bgColor
-            height: 60
+            height: 48
             radius: 6
 
             Rectangle {
@@ -1256,24 +1257,24 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
                 spacing: 12
 
                 Item { Layout.fillWidth: true }
 
                 Rectangle {
                     Layout.preferredWidth: 90
-                    height: 38
+                    height: 30
                     color: cardColor
-                    radius: 4
+                    radius: 6
                     border.color: borderColor
 
                     Text {
                         anchors.centerIn: parent
                         text: "Cancel"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: textSecondary
                     }
 
@@ -1286,15 +1287,15 @@ Item {
 
                 Rectangle {
                     Layout.preferredWidth: 120
-                    height: 38
-                    radius: 4
+                    height: 30
+                    radius: 6
                     color: accentColor
 
                     Text {
                         anchors.centerIn: parent
                         text: "Save Changes"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: "white"
                     }
 
@@ -1322,7 +1323,7 @@ Item {
     Dialog {
         id: deleteConfirmDialog
         anchors.centerIn: parent
-        width: 380
+        width: 320
         modal: true
         padding: 0
 
@@ -1341,16 +1342,16 @@ Item {
 
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
-                width: 56
-                height: 56
-                radius: 28
+                width: 52
+                height: 52
+                radius: 26
                 color: Qt.lighter(dangerColor, 1.7)
 
                 Text {
                     anchors.centerIn: parent
                     text: "\uf1f8"
                     font.family: "Font Awesome 5 Pro Solid"
-                    font.pixelSize: 24
+                    font.pixelSize: 16
                     color: dangerColor
                 }
             }
@@ -1359,7 +1360,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 text: "Delete Instrument?"
                 font.family: "Codec Pro"
-                font.pixelSize: 18
+                font.pixelSize: 13
                 font.bold: true
                 color: textPrimary
             }
@@ -1370,7 +1371,7 @@ Item {
                 Layout.rightMargin: 30
                 text: "Are you sure you want to delete \"" + deleteInstrumentName + "\"? This action cannot be undone."
                 font.family: "Codec Pro"
-                font.pixelSize: 13
+                font.pixelSize: 11
                 color: textSecondary
                 wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
@@ -1383,16 +1384,16 @@ Item {
 
                 Rectangle {
                     width: 100
-                    height: 38
+                    height: 32
                     color: cardColor
-                    radius: 4
+                    radius: 6
                     border.color: borderColor
 
                     Text {
                         anchors.centerIn: parent
                         text: "Cancel"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: textSecondary
                     }
 
@@ -1407,13 +1408,13 @@ Item {
                     width: 100
                     height: 38
                     color: dangerColor
-                    radius: 4
+                    radius: 6
 
                     Text {
                         anchors.centerIn: parent
                         text: "Delete"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: "white"
                     }
 

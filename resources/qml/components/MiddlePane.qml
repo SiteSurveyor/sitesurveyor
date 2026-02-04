@@ -3,14 +3,14 @@ import QtQuick.Layouts
 
 Item {
     id: middleItem
-    width: 152
+    width: 130
     height: parent.height
     anchors.left: leftItem.right
     anchors.leftMargin: 22
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 16
+        spacing: 12
 
         MiddlePaneWidget {
             label: qsTr('Temperature')

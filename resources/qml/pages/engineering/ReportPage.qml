@@ -6,17 +6,17 @@ import QtQuick.Dialogs
 Item {
     id: root
 
-    // CoreUI Light theme colors
-    property color bgColor: "#ebedef"
+    // Compact light theme
+    property color bgColor: "#f6f7f9"
     property color cardColor: "#ffffff"
-    property color textPrimary: "#3c4b64"
-    property color textSecondary: "#768192"
-    property color accentColor: "#321fdb"
-    property color successColor: "#2eb85c"
-    property color warningColor: "#f9b115"
-    property color dangerColor: "#e55353"
-    property color infoColor: "#39f"
-    property color borderColor: "#d8dbe0"
+    property color accentColor: "#2563eb"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color borderColor: "#d0d7de"
+    property color successColor: "#16a34a"
+    property color warningColor: "#f59e0b"
+    property color dangerColor: "#dc2626"
+    property color infoColor: "#0ea5e9"
 
     // Glass Effect Properties
     property color glassBg: Qt.rgba(1, 1, 1, 0.85)
@@ -79,7 +79,7 @@ Item {
                     Text {
                         text: "Project Report"
                         font.family: "Codec Pro"
-                        font.pixelSize: 22
+                        font.pixelSize: 14
                         font.weight: Font.Bold
                         color: textPrimary
                     }
@@ -87,7 +87,7 @@ Item {
                     Text {
                         text: "Generated: " + reportDate
                         font.family: "Codec Pro"
-                        font.pixelSize: 11
+                        font.pixelSize: 9
                         color: textSecondary
                     }
                 }
@@ -105,13 +105,13 @@ Item {
                         Text {
                             text: "\uf021"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 11
+                            font.pixelSize: 9
                             color: "white"
                         }
                         Text {
                             text: "Refresh"
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 9
                             color: "white"
                         }
                     }
@@ -138,13 +138,13 @@ Item {
                         Text {
                             text: "\uf02f"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 11
+                            font.pixelSize: 9
                             color: "white"
                         }
                         Text {
                             text: "Print"
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 9
                             color: "white"
                         }
                     }
@@ -209,7 +209,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: "\uf15c"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 14
+                                        font.pixelSize: 11
                                         color: accentColor
                                     }
                                 }
@@ -217,7 +217,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: "Project Information"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 15
+                                    font.pixelSize: 12
                                     font.weight: Font.Bold
                                     color: textPrimary
                                 }
@@ -233,40 +233,40 @@ Item {
                                 Column {
                                     width: (parent.width - 30) / 2
                                     spacing: 3
-                                    Text { text: "Project Name"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
-                                    Text { text: projectName; font.family: "Codec Pro"; font.pixelSize: 13; font.weight: Font.Medium; color: textPrimary }
+                                    Text { text: "Project Name"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
+                                    Text { text: projectName; font.family: "Codec Pro"; font.pixelSize: 11; font.weight: Font.Medium; color: textPrimary }
                                 }
 
                                 Column {
                                     width: (parent.width - 30) / 2
                                     spacing: 3
-                                    Text { text: "Discipline"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
+                                    Text { text: "Discipline"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
                                     Rectangle {
                                         width: discTxt.width + 10; height: 20; radius: 4
                                         color: Qt.lighter(accentColor, 1.85)
-                                        Text { id: discTxt; anchors.centerIn: parent; text: projectDiscipline; font.family: "Codec Pro"; font.pixelSize: 10; color: accentColor }
+                                        Text { id: discTxt; anchors.centerIn: parent; text: projectDiscipline; font.family: "Codec Pro"; font.pixelSize: 9; color: accentColor }
                                     }
                                 }
 
                                 Column {
                                     width: parent.width
                                     spacing: 3
-                                    Text { text: "Description"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
-                                    Text { width: parent.width; text: projectDescription; font.family: "Codec Pro"; font.pixelSize: 13; color: textPrimary; wrapMode: Text.WordWrap }
+                                    Text { text: "Description"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
+                                    Text { width: parent.width; text: projectDescription; font.family: "Codec Pro"; font.pixelSize: 11; color: textPrimary; wrapMode: Text.WordWrap }
                                 }
 
                                 Column {
                                     width: (parent.width - 30) / 2
                                     spacing: 3
-                                    Text { text: "Coordinates (Lo29)"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
-                                    Text { text: "Y: " + projectY.toFixed(2) + ", X: " + projectX.toFixed(2); font.family: "Codec Pro"; font.pixelSize: 13; color: textPrimary }
+                                    Text { text: "Coordinates (Lo29)"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
+                                    Text { text: "Y: " + projectY.toFixed(2) + ", X: " + projectX.toFixed(2); font.family: "Codec Pro"; font.pixelSize: 11; color: textPrimary }
                                 }
 
                                 Column {
                                     width: (parent.width - 30) / 2
                                     spacing: 3
-                                    Text { text: "SRID"; font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
-                                    Text { text: "EPSG:" + projectSrid; font.family: "Codec Pro"; font.pixelSize: 13; color: textPrimary }
+                                    Text { text: "SRID"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
+                                    Text { text: "EPSG:" + projectSrid; font.family: "Codec Pro"; font.pixelSize: 11; color: textPrimary }
                                 }
                             }
                         }
@@ -309,20 +309,20 @@ Item {
                                     Rectangle {
                                         width: 28; height: 28; radius: 6
                                         color: Qt.lighter(accentColor, 1.85)
-                                        Text { anchors.centerIn: parent; text: "\uf0c0"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 12; color: accentColor }
+                                        Text { anchors.centerIn: parent; text: "\uf0c0"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 10; color: accentColor }
                                     }
-                                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Personnel"; font.family: "Codec Pro"; font.pixelSize: 13; font.weight: Font.Bold; color: textPrimary }
+                                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Personnel"; font.family: "Codec Pro"; font.pixelSize: 11; font.weight: Font.Bold; color: textPrimary }
                                 }
 
                                 Row {
                                     spacing: 16
                                     Column {
-                                        Text { text: totalPersonnel.toString(); font.family: "Codec Pro"; font.pixelSize: 24; font.weight: Font.Bold; color: accentColor }
-                                        Text { text: "Total"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
+                                        Text { text: totalPersonnel.toString(); font.family: "Codec Pro"; font.pixelSize: 16; font.weight: Font.Bold; color: accentColor }
+                                        Text { text: "Total"; font.family: "Codec Pro"; font.pixelSize: 8; color: textSecondary }
                                     }
                                     Column {
-                                        Text { text: onSitePersonnel.toString(); font.family: "Codec Pro"; font.pixelSize: 24; font.weight: Font.Bold; color: successColor }
-                                        Text { text: "On Site"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
+                                        Text { text: onSitePersonnel.toString(); font.family: "Codec Pro"; font.pixelSize: 16; font.weight: Font.Bold; color: successColor }
+                                        Text { text: "On Site"; font.family: "Codec Pro"; font.pixelSize: 8; color: textSecondary }
                                     }
                                 }
                             }
@@ -346,20 +346,20 @@ Item {
                                     Rectangle {
                                         width: 28; height: 28; radius: 6
                                         color: Qt.lighter(infoColor, 1.85)
-                                        Text { anchors.centerIn: parent; text: "\uf0ad"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 12; color: infoColor }
+                                        Text { anchors.centerIn: parent; text: "\uf0ad"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 10; color: infoColor }
                                     }
-                                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Instruments"; font.family: "Codec Pro"; font.pixelSize: 13; font.weight: Font.Bold; color: textPrimary }
+                                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Instruments"; font.family: "Codec Pro"; font.pixelSize: 11; font.weight: Font.Bold; color: textPrimary }
                                 }
 
                                 Row {
                                     spacing: 16
                                     Column {
-                                        Text { text: totalInstruments.toString(); font.family: "Codec Pro"; font.pixelSize: 24; font.weight: Font.Bold; color: infoColor }
-                                        Text { text: "Total"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
+                                        Text { text: totalInstruments.toString(); font.family: "Codec Pro"; font.pixelSize: 16; font.weight: Font.Bold; color: infoColor }
+                                        Text { text: "Total"; font.family: "Codec Pro"; font.pixelSize: 8; color: textSecondary }
                                     }
                                     Column {
-                                        Text { text: availableInstruments.toString(); font.family: "Codec Pro"; font.pixelSize: 24; font.weight: Font.Bold; color: successColor }
-                                        Text { text: "Available"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
+                                        Text { text: availableInstruments.toString(); font.family: "Codec Pro"; font.pixelSize: 16; font.weight: Font.Bold; color: successColor }
+                                        Text { text: "Available"; font.family: "Codec Pro"; font.pixelSize: 8; color: textSecondary }
                                     }
                                 }
                             }
@@ -383,14 +383,14 @@ Item {
                                     Rectangle {
                                         width: 28; height: 28; radius: 6
                                         color: Qt.lighter(successColor, 1.85)
-                                        Text { anchors.centerIn: parent; text: "\uf3c5"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 12; color: successColor }
+                                        Text { anchors.centerIn: parent; text: "\uf3c5"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 10; color: successColor }
                                     }
-                                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Survey Points"; font.family: "Codec Pro"; font.pixelSize: 13; font.weight: Font.Bold; color: textPrimary }
+                                    Text { anchors.verticalCenter: parent.verticalCenter; text: "Survey Points"; font.family: "Codec Pro"; font.pixelSize: 11; font.weight: Font.Bold; color: textPrimary }
                                 }
 
                                 Column {
-                                    Text { text: totalPoints.toString(); font.family: "Codec Pro"; font.pixelSize: 28; font.weight: Font.Bold; color: successColor }
-                                    Text { text: "Points Recorded"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
+                                    Text { text: totalPoints.toString(); font.family: "Codec Pro"; font.pixelSize: 18; font.weight: Font.Bold; color: successColor }
+                                    Text { text: "Points Recorded"; font.family: "Codec Pro"; font.pixelSize: 8; color: textSecondary }
                                 }
                             }
                         }
@@ -432,11 +432,11 @@ Item {
                                 Rectangle {
                                     width: 32; height: 32; radius: 6
                                     color: Qt.lighter(accentColor, 1.85)
-                                    Text { anchors.centerIn: parent; text: "\uf0c0"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 14; color: accentColor }
+                                    Text { anchors.centerIn: parent; text: "\uf0c0"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: accentColor }
                                 }
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: "Personnel List"; font.family: "Codec Pro"; font.pixelSize: 15; font.weight: Font.Bold; color: textPrimary }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: "Personnel List"; font.family: "Codec Pro"; font.pixelSize: 12; font.weight: Font.Bold; color: textPrimary }
                                 Item { width: 1; height: 1 }
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: totalPersonnel + " members"; font.family: "Codec Pro"; font.pixelSize: 11; color: textSecondary }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: totalPersonnel + " members"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
                             }
 
                             // Header
@@ -451,10 +451,10 @@ Item {
                                     anchors.left: parent.left
                                     anchors.leftMargin: 10
                                     spacing: 0
-                                    Text { width: 180; text: "Name"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Bold; color: textSecondary }
-                                    Text { width: 140; text: "Role"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Bold; color: textSecondary }
-                                    Text { width: 130; text: "Phone"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Bold; color: textSecondary }
-                                    Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Bold; color: textSecondary }
+                                    Text { width: 180; text: "Name"; font.family: "Codec Pro"; font.pixelSize: 9; font.weight: Font.Bold; color: textSecondary }
+                                    Text { width: 140; text: "Role"; font.family: "Codec Pro"; font.pixelSize: 9; font.weight: Font.Bold; color: textSecondary }
+                                    Text { width: 130; text: "Phone"; font.family: "Codec Pro"; font.pixelSize: 9; font.weight: Font.Bold; color: textSecondary }
+                                    Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 9; font.weight: Font.Bold; color: textSecondary }
                                 }
                             }
 
@@ -472,19 +472,19 @@ Item {
                                         anchors.left: parent.left
                                         anchors.leftMargin: 10
                                         spacing: 0
-                                        Text { width: 180; text: modelData.name || ""; font.family: "Codec Pro"; font.pixelSize: 11; color: textPrimary; elide: Text.ElideRight }
-                                        Text { width: 140; text: modelData.role || ""; font.family: "Codec Pro"; font.pixelSize: 11; color: textSecondary; elide: Text.ElideRight }
-                                        Text { width: 130; text: modelData.phone || "-"; font.family: "Codec Pro"; font.pixelSize: 11; color: textSecondary; elide: Text.ElideRight }
+                                        Text { width: 180; text: modelData.name || ""; font.family: "Codec Pro"; font.pixelSize: 9; color: textPrimary; elide: Text.ElideRight }
+                                        Text { width: 140; text: modelData.role || ""; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary; elide: Text.ElideRight }
+                                        Text { width: 130; text: modelData.phone || "-"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary; elide: Text.ElideRight }
                                         Rectangle {
                                             width: pStat.width + 10; height: 20; radius: 3
                                             color: modelData.status === "On Site" ? Qt.lighter(successColor, 1.85) : modelData.status === "Off Site" ? Qt.lighter(warningColor, 1.85) : Qt.lighter(dangerColor, 1.85)
-                                            Text { id: pStat; anchors.centerIn: parent; text: modelData.status || ""; font.family: "Codec Pro"; font.pixelSize: 9; color: modelData.status === "On Site" ? successColor : modelData.status === "Off Site" ? warningColor : dangerColor }
+                                            Text { id: pStat; anchors.centerIn: parent; text: modelData.status || ""; font.family: "Codec Pro"; font.pixelSize: 8; color: modelData.status === "On Site" ? successColor : modelData.status === "Off Site" ? warningColor : dangerColor }
                                         }
                                     }
                                 }
                             }
 
-                            Text { visible: totalPersonnel === 0; text: "No personnel"; font.family: "Codec Pro"; font.pixelSize: 11; color: textSecondary }
+                            Text { visible: totalPersonnel === 0; text: "No personnel"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
                         }
                     }
 
@@ -524,11 +524,11 @@ Item {
                                 Rectangle {
                                     width: 32; height: 32; radius: 6
                                     color: Qt.lighter(infoColor, 1.85)
-                                    Text { anchors.centerIn: parent; text: "\uf0ad"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 14; color: infoColor }
+                                    Text { anchors.centerIn: parent; text: "\uf0ad"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: infoColor }
                                 }
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: "Instruments List"; font.family: "Codec Pro"; font.pixelSize: 15; font.weight: Font.Bold; color: textPrimary }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: "Instruments List"; font.family: "Codec Pro"; font.pixelSize: 12; font.weight: Font.Bold; color: textPrimary }
                                 Item { width: 1; height: 1 }
-                                Text { anchors.verticalCenter: parent.verticalCenter; text: totalInstruments + " instruments"; font.family: "Codec Pro"; font.pixelSize: 11; color: textSecondary }
+                                Text { anchors.verticalCenter: parent.verticalCenter; text: totalInstruments + " instruments"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
                             }
 
                             // Header
@@ -543,10 +543,10 @@ Item {
                                     anchors.left: parent.left
                                     anchors.leftMargin: 10
                                     spacing: 0
-                                    Text { width: 180; text: "Name"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Bold; color: textSecondary }
-                                    Text { width: 140; text: "Type"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Bold; color: textSecondary }
-                                    Text { width: 130; text: "Serial"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Bold; color: textSecondary }
-                                    Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Bold; color: textSecondary }
+                                    Text { width: 180; text: "Name"; font.family: "Codec Pro"; font.pixelSize: 9; font.weight: Font.Bold; color: textSecondary }
+                                    Text { width: 140; text: "Type"; font.family: "Codec Pro"; font.pixelSize: 9; font.weight: Font.Bold; color: textSecondary }
+                                    Text { width: 130; text: "Serial"; font.family: "Codec Pro"; font.pixelSize: 9; font.weight: Font.Bold; color: textSecondary }
+                                    Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 9; font.weight: Font.Bold; color: textSecondary }
                                 }
                             }
 
@@ -564,19 +564,19 @@ Item {
                                         anchors.left: parent.left
                                         anchors.leftMargin: 10
                                         spacing: 0
-                                        Text { width: 180; text: modelData.name || ""; font.family: "Codec Pro"; font.pixelSize: 11; color: textPrimary; elide: Text.ElideRight }
-                                        Text { width: 140; text: modelData.type || ""; font.family: "Codec Pro"; font.pixelSize: 11; color: textSecondary; elide: Text.ElideRight }
-                                        Text { width: 130; text: modelData.serial || "-"; font.family: "Codec Pro"; font.pixelSize: 11; color: textSecondary; elide: Text.ElideRight }
+                                        Text { width: 180; text: modelData.name || ""; font.family: "Codec Pro"; font.pixelSize: 9; color: textPrimary; elide: Text.ElideRight }
+                                        Text { width: 140; text: modelData.type || ""; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary; elide: Text.ElideRight }
+                                        Text { width: 130; text: modelData.serial || "-"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary; elide: Text.ElideRight }
                                         Rectangle {
                                             width: iStat.width + 10; height: 20; radius: 3
                                             color: modelData.status === "Available" ? Qt.lighter(successColor, 1.85) : modelData.status === "In Use" ? Qt.lighter(infoColor, 1.85) : Qt.lighter(warningColor, 1.85)
-                                            Text { id: iStat; anchors.centerIn: parent; text: modelData.status || ""; font.family: "Codec Pro"; font.pixelSize: 9; color: modelData.status === "Available" ? successColor : modelData.status === "In Use" ? infoColor : warningColor }
+                                            Text { id: iStat; anchors.centerIn: parent; text: modelData.status || ""; font.family: "Codec Pro"; font.pixelSize: 8; color: modelData.status === "Available" ? successColor : modelData.status === "In Use" ? infoColor : warningColor }
                                         }
                                     }
                                 }
                             }
 
-                            Text { visible: totalInstruments === 0; text: "No instruments"; font.family: "Codec Pro"; font.pixelSize: 11; color: textSecondary }
+                            Text { visible: totalInstruments === 0; text: "No instruments"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
                         }
                     }
 
@@ -607,11 +607,11 @@ Item {
                             anchors.left: parent.left
                             anchors.margins: 16
                             spacing: 12
-                            Text { text: "\uf15c"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 14; color: textSecondary }
+                            Text { text: "\uf15c"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 11; color: textSecondary }
                             Column {
                                 spacing: 1
-                                Text { text: "SiteSurveyor Project Report"; font.family: "Codec Pro"; font.pixelSize: 11; font.weight: Font.Medium; color: textPrimary }
-                                Text { text: "Generated: " + reportDate; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary }
+                                Text { text: "SiteSurveyor Project Report"; font.family: "Codec Pro"; font.pixelSize: 9; font.weight: Font.Medium; color: textPrimary }
+                                Text { text: "Generated: " + reportDate; font.family: "Codec Pro"; font.pixelSize: 8; color: textSecondary }
                             }
                         }
                     }

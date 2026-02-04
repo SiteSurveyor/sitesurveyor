@@ -10,7 +10,7 @@ RowLayout {
 
     Text {
         text: label
-        font.pixelSize: 14
+        font.pixelSize: 11
         color: textColor
         Layout.fillWidth: true
         Layout.alignment: Qt.AlignVCenter

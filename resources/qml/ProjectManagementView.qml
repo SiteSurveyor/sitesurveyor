@@ -13,6 +13,18 @@ Item {
     signal projectSelected(int projectId, string projectName)
     signal backRequested()
 
+    property real introProgress: 0
+
+    NumberAnimation {
+        id: introAnim
+        target: root
+        property: "introProgress"
+        from: 0
+        to: 1
+        duration: 180
+        easing.type: Easing.OutCubic
+    }
+
     // Simple light theme (consistent + compact)
     property color bgColor: "#f6f7f9"
     property color cardColor: "#ffffff"
@@ -54,6 +66,7 @@ Item {
 
     Component.onCompleted: {
         console.log("ProjectManagementView completed, discipline: " + discipline)
+        introAnim.restart()
         refreshProjects()
     }
 
@@ -185,6 +198,8 @@ Item {
         anchors.fill: parent
         anchors.margins: pageMargin
         spacing: 16
+        opacity: root.introProgress
+        transform: Translate { y: (1 - root.introProgress) * 8 }
 
         // Header Card - Enhanced with search, sort, filter
         Rectangle {
@@ -278,6 +293,10 @@ Item {
                     color: searchField.activeFocus ? "#ffffff" : bgColor
                     border.color: searchField.activeFocus ? accentColor : borderColor
                     border.width: searchField.activeFocus ? 2 : 1
+
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on border.color { ColorAnimation { duration: 120 } }
+                    Behavior on border.width { NumberAnimation { duration: 120 } }
 
                     RowLayout {
                         anchors.fill: parent
@@ -739,6 +758,9 @@ Item {
                            filterTabMa.containsMouse ? Qt.lighter(accentColor, 1.9) : "transparent"
                     border.color: filterStatus === modelData.key ? accentColor : borderColor
                     border.width: 1
+
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on border.color { ColorAnimation { duration: 120 } }
                     
                     RowLayout {
                         id: filterTabRow
@@ -799,6 +821,9 @@ Item {
                 color: selectionMode ? warningColor : selectModeMa.containsMouse ? bgColor : "transparent"
                 border.color: selectionMode ? warningColor : borderColor
                 border.width: 1
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on border.color { ColorAnimation { duration: 120 } }
                 
                 RowLayout {
                     id: selectModeRow
@@ -1118,9 +1143,12 @@ Item {
                         border.color: isItemSelected ? accentColor : 
                                       cardMa.containsMouse ? accentColor : borderColor
                         border.width: isItemSelected || cardMa.containsMouse ? 2 : 1
+                        scale: cardMa.pressed ? 0.99 : 1.0
+                        transformOrigin: Item.Center
 
                         Behavior on color { ColorAnimation { duration: 120 } }
                         Behavior on border.color { ColorAnimation { duration: 120 } }
+                        Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
 
                         MouseArea {
                             id: cardMa
@@ -1621,10 +1649,17 @@ Item {
         }
 
         background: Rectangle {
+            id: createDialogBg
             color: cardColor
             radius: 6
             border.color: borderColor
             border.width: 1
+            opacity: createProjectDialog.visible ? 1 : 0
+            scale: createProjectDialog.visible ? 1 : 0.98
+            transformOrigin: Item.Center
+
+            Behavior on opacity { NumberAnimation { duration: 120 } }
+            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
         }
 
         header: Rectangle {

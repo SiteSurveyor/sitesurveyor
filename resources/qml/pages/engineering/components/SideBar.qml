@@ -14,20 +14,45 @@ Rectangle {
 
     signal toggleCollapse()
     signal tabSelected(string name)
+    // Compact light theme
+    property color bgColor: "#f6f7f9"
+    property color cardColor: "#ffffff"
+    property color borderColor: "#d0d7de"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color accentColor: "#2563eb"
 
     // Uniform sidebar background
-    color: "#2C3E50"
+    Rectangle {
+        anchors.fill: parent
+        color: cardColor
+    }
 
-    Layout.preferredWidth: collapsed ? 60 : 256
+    Layout.preferredWidth: collapsed ? 56 : 220
     Behavior on Layout.preferredWidth { NumberAnimation { duration: 250; easing.type: Easing.InOutQuad } }
+    // Right border
+    Rectangle {
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        width: 1
+        color: borderColor
+    }
 
     // Brand / Logo Area
     Rectangle {
         id: brand
         width: parent.width
-        height: 64
-        color: "#1A252F"
+        height: 56
+        color: cardColor
         z: 2
+
+        Rectangle {
+            anchors.bottom: parent.bottom
+            width: parent.width
+            height: 1
+            color: borderColor
+        }
 
         RowLayout {
             anchors.centerIn: parent
@@ -35,10 +60,10 @@ Rectangle {
 
             Image {
                 source: "qrc:/logo/SiteSurveyor.png"
-                sourceSize.height: 40
+                sourceSize.height: 28
                 fillMode: Image.PreserveAspectFit
-                Layout.preferredHeight: 40
-                Layout.preferredWidth: root.collapsed ? 40 : 180
+                Layout.preferredHeight: 28
+                Layout.preferredWidth: root.collapsed ? 28 : 160
                 Layout.alignment: Qt.AlignVCenter
             }
         }
@@ -81,20 +106,23 @@ Rectangle {
                     anchors.rightMargin: 8
                     anchors.topMargin: 2
                     anchors.bottomMargin: 2
-                    radius: 8
-                    color: "transparent"
+                    radius: 6
+                    color: selected ? Qt.rgba(37/255, 99/255, 235/255, 0.12) :
+                          (ma.containsMouse ? Qt.rgba(37/255, 99/255, 235/255, 0.06) : "transparent")
+
+                    Behavior on color { ColorAnimation { duration: 120 } }
                 }
 
                 // Left accent bar for selected and hover
                 Rectangle {
                     id: accentBar
-                    width: 3
-                    height: (selected || ma.containsMouse) ? parent.height * 0.6 : 0
+                    width: (selected || ma.containsMouse) ? 2 : 0
+                    height: parent.height * 0.5
                     anchors.left: parent.left
                     anchors.leftMargin: 4
                     anchors.verticalCenter: parent.verticalCenter
                     radius: 2
-                    color: "#3498DB"
+                    color: accentColor
 
                     Behavior on height {
                         NumberAnimation { duration: 200; easing.type: Easing.OutBack }
@@ -133,16 +161,16 @@ Rectangle {
                             anchors.centerIn: parent
                             text: icon
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: isSub ? 12 : 15
-                            color: selected ? "#FFFFFF" : "#95A5A6"
+                            font.pixelSize: isSub ? 10 : 12
+                            color: selected ? accentColor : textSecondary
                         }
                     }
 
                     Text {
                         text: label
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
-                        color: selected ? "#FFFFFF" : "#BDC3C7"
+                        font.pixelSize: 11
+                        color: selected ? textPrimary : textSecondary
                         visible: !root.collapsed
 
                         Behavior on color {
@@ -164,8 +192,8 @@ Rectangle {
                             anchors.centerIn: parent
                             text: "\uf054" // chevron-right
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 10
-                            color: "#95A5A6"
+                            font.pixelSize: 9
+                            color: textSecondary
                             rotation: arrowExpanded ? 90 : 0
 
                             Behavior on rotation {
@@ -183,10 +211,10 @@ Rectangle {
                 property string title: ""
                 text: title
                 font.family: "Codec Pro"
-                font.pixelSize: 10
+                font.pixelSize: 9
                 font.bold: true
-                font.letterSpacing: 1.5
-                color: "#7F8C8D"
+                font.letterSpacing: 1.2
+                color: textSecondary
                 leftPadding: 24
                 topPadding: 14
                 bottomPadding: 6

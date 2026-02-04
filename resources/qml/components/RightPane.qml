@@ -7,23 +7,25 @@ Item {
     height: parent.height
     anchors.left: middleItem.right
     anchors.right: parent.right
-    anchors.leftMargin: 35
+    anchors.leftMargin: 24
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 16
+        spacing: 12
 
         Rectangle {
             color: glassyBgColor
-            radius: 16
+            radius: 8
+            border.color: borderColor
+            border.width: 1
             Layout.fillWidth: true
             Layout.fillHeight: true
 
             Item {
                 anchors.fill: parent
-                anchors.margins: 24
+                anchors.margins: 16
 
-                property real maxcircularbarwidth: Math.min(width, height) - 24
+                property real maxcircularbarwidth: Math.min(width, height) - 16
 
                 CircularProgressBar {
                     width: parent.maxcircularbarwidth
@@ -34,21 +36,21 @@ Item {
                     from: 0
                     to: 100
                     value: 50
-                    lineWidth: 16
+                    lineWidth: 10
 
                     Item {
                         anchors.fill: parent
-                        anchors.margins: 16
+                        anchors.margins: 12
 
                         Text {
                             text: commafy(powerConsumed)
-                            font.pixelSize: 50
+                            font.pixelSize: 28
                             color: textColor
                             anchors.centerIn: parent
 
                             Text {
                                 text: qsTr('Power')
-                                font.pixelSize: 16
+                                font.pixelSize: 12
                                 color: textColor
 
                                 anchors.bottom: parent.top
@@ -58,7 +60,7 @@ Item {
 
                             Text {
                                 text: qsTr('kW')
-                                font.pixelSize: 14
+                                font.pixelSize: 11
                                 color: textColor
 
                                 anchors.top: parent.bottom
@@ -72,19 +74,21 @@ Item {
 
         Rectangle {
             color: glassyBgColor
-            radius: 16
+            radius: 8
+            border.color: borderColor
+            border.width: 1
             Layout.fillWidth: true
-            Layout.preferredHeight: lightswitchescol.height + 48
+            Layout.preferredHeight: lightswitchescol.height + 36
 
             Item {
                 anchors.fill: parent
-                anchors.margins: 24
+                anchors.margins: 16
                 height: lightswitchescol.height
 
                 Column {
                     id: lightswitchescol
                     width: parent.width
-                    spacing: 16
+                    spacing: 12
 
                     RightPaneLightSwitchComponent {
                         label: qsTr('Windows')
@@ -106,19 +110,21 @@ Item {
 
         Rectangle {
             color: glassyBgColor
-            radius: 16
+            radius: 8
+            border.color: borderColor
+            border.width: 1
             Layout.fillWidth: true
-            Layout.preferredHeight: lightintensityitemcol.height + 48
+            Layout.preferredHeight: lightintensityitemcol.height + 36
 
             Item {
                 anchors.fill: parent
-                anchors.margins: 24
+                anchors.margins: 16
                 height: lightintensityitemcol.height
 
                 Column {
                     id: lightintensityitemcol
                     width: parent.width
-                    spacing: 16
+                    spacing: 12
 
                     RowLayout {
                         width: parent.width
@@ -126,7 +132,7 @@ Item {
 
                         Text {
                             text: qsTr('Light Intensity')
-                            font.pixelSize: 14
+                            font.pixelSize: 11
                             color: textColor
                             Layout.fillWidth: true
                             Layout.alignment: Qt.AlignVCenter
@@ -146,7 +152,7 @@ Item {
 
                     Text {
                         text: Math.round(pb.value * 100)
-                        font.pixelSize: 14
+                        font.pixelSize: 11
                         color: textColor
                         width: parent.width
                         horizontalAlignment: Text.AlignRight

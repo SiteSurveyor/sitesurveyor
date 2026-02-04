@@ -4,10 +4,12 @@ import QtQuick.Layouts
 Rectangle {
     id: root
     color: glassyBgColor
-    radius: 16
+    radius: 8
+    border.color: borderColor
+    border.width: 1
 
     Layout.fillWidth: true
-    Layout.preferredHeight: 120
+    Layout.preferredHeight: 90
 
     property string label
     property real value
@@ -16,11 +18,11 @@ Rectangle {
 
     Item {
         anchors.fill: parent
-        anchors.margins: 24
+        anchors.margins: 16
 
         Text {
             text: label
-            font.pixelSize: 14
+            font.pixelSize: 11
             color: textColor
             anchors.top: parent.top
             anchors.left: parent.left
@@ -29,7 +31,7 @@ Rectangle {
         Text {
             id: valuetxt
             text: value
-            font.pixelSize: 56
+            font.pixelSize: 32
             color: textColor
             anchors.bottom: parent.bottom
             anchors.bottomMargin: alignUnitsRight ? 0 : 16
@@ -37,7 +39,7 @@ Rectangle {
 
             Text {
                 text: units
-                font.pixelSize: 16
+                font.pixelSize: 12
                 color: textColor
                 anchors.top: parent.top
                 anchors.left: parent.right
@@ -47,7 +49,7 @@ Rectangle {
 
         Text {
             text: units
-            font.pixelSize: 16
+            font.pixelSize: 12
             color: textColor
             visible: !alignUnitsRight
             anchors.top: valuetxt.bottom

@@ -2,6 +2,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QSqlRecord>
+#include <QSqlDriver>
 #include <QDebug>
 #include <QFile>
 #include <QTextStream>
@@ -42,6 +43,7 @@ bool DatabaseManager::openDatabase(const QString &path)
     }
 
     m_db = QSqlDatabase::addDatabase("QSQLITE", "spatialite_connection");
+    m_db.setConnectOptions("QSQLITE_ENABLE_EXTENSIONS");
     m_db.setDatabaseName(path);
 
     if (!m_db.open()) {
@@ -148,24 +150,47 @@ bool DatabaseManager::initSpatialite()
 {
 #ifdef WITH_SPATIALITE
     m_spatialiteCache = spatialite_alloc_connection();
+    if (!m_spatialiteCache) {
+        qWarning() << "SpatiaLite cache allocation failed";
+        return false;
+    }
+
+    sqlite3 *sqliteHandle = nullptr;
+    const QVariant driverHandle = m_db.driver()->handle();
+    if (driverHandle.isValid() && QString(driverHandle.typeName()) == "sqlite3*") {
+        sqliteHandle = *static_cast<sqlite3 **>(driverHandle.data());
+    }
 
     QSqlQuery query(m_db);
 
-    // Load SpatiaLite extension
-    query.exec("SELECT load_extension('mod_spatialite')");
-
-    // Initialize spatial metadata
-    if (query.exec("SELECT InitSpatialMetaData(1)")) {
-        m_spatialiteLoaded = true;
-        qDebug() << "SpatiaLite initialized successfully";
-        return true;
+    if (sqliteHandle) {
+        spatialite_init_ex(sqliteHandle, m_spatialiteCache, 0);
     } else {
-        // Try alternative initialization
-        query.exec("SELECT InitSpatialMetaData()");
-        m_spatialiteLoaded = query.lastError().type() == QSqlError::NoError;
+        qWarning() << "SpatiaLite init failed: unable to access sqlite3 handle";
+        return false;
     }
 
-    return m_spatialiteLoaded;
+    if (!query.exec("SELECT spatialite_version()")) {
+        qWarning() << "SpatiaLite init failed:" << query.lastError().text();
+        return false;
+    }
+
+    // Initialize spatial metadata (ignore 'already exists' errors)
+    if (!query.exec("SELECT InitSpatialMetaData(1)")) {
+        const QString errorText = query.lastError().text();
+        if (!errorText.contains("already exists", Qt::CaseInsensitive)) {
+            if (!query.exec("SELECT InitSpatialMetaData()")) {
+                const QString fallbackError = query.lastError().text();
+                if (!fallbackError.contains("already exists", Qt::CaseInsensitive)) {
+                    qWarning() << "InitSpatialMetaData failed:" << fallbackError;
+                }
+            }
+        }
+    }
+
+    m_spatialiteLoaded = true;
+    qDebug() << "SpatiaLite initialized successfully";
+    return true;
 #else
     qDebug() << "SpatiaLite support not compiled in";
     return false;

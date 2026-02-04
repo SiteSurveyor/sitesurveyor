@@ -8,6 +8,20 @@ Item {
     // Signal to notify Main.qml of selection
     signal disciplineSelected(string name)
 
+    property real introProgress: 0
+
+    Component.onCompleted: introAnim.start()
+
+    NumberAnimation {
+        id: introAnim
+        target: root
+        property: "introProgress"
+        from: 0
+        to: 1
+        duration: 200
+        easing.type: Easing.OutCubic
+    }
+
     // Simple, consistent light theme
     property color bgColor: "#f6f7f9"
     property color cardColor: "#ffffff"
@@ -28,6 +42,8 @@ Item {
         anchors.fill: parent
         anchors.margins: pageMargin
         spacing: 16
+        opacity: root.introProgress
+        transform: Translate { y: (1 - root.introProgress) * 10 }
 
         // Header Section
         ColumnLayout {
@@ -90,12 +106,12 @@ Item {
                     }
 
                     model: [
-                        { name: "Engineering Surveying", icon: "\uf5ae" },
-                        { name: "Mining Surveying", icon: "\uf6e3" },
-                        { name: "Geodetic Surveying", icon: "\uf57d" },
-                        { name: "Cadastral Surveying", icon: "\uf5a0" },
-                        { name: "Remote Sensing", icon: "\uf7c0" },
-                        { name: "Topographic Surveying", icon: "\uf6fc" }
+                        { name: "Engineering Surveying", icon: "\uf5ae", desc: "Layout, as-builts, earthworks" },
+                        { name: "Mining Surveying", icon: "\uf6e3", desc: "Underground and open-pit control" },
+                        { name: "Geodetic Surveying", icon: "\uf57d", desc: "GNSS control and precise coords" },
+                        { name: "Cadastral Surveying", icon: "\uf5a0", desc: "Boundaries and legal plans" },
+                        { name: "Remote Sensing", icon: "\uf7c0", desc: "UAV/LiDAR imagery and surfaces" },
+                        { name: "Topographic Surveying", icon: "\uf6fc", desc: "Contours and feature mapping" }
                     ]
 
                     delegate: Item {
@@ -103,12 +119,18 @@ Item {
                         height: disciplinesGrid.cellHeight
 
                         Rectangle {
+                            id: tile
                             anchors.fill: parent
                             anchors.margins: 6
                             radius: 6
                             color: mouseArea.containsMouse ? Qt.lighter(cardColor, 1.02) : cardColor
                             border.color: mouseArea.containsMouse ? accentColor : borderColor
                             border.width: 1
+                            scale: mouseArea.pressed ? 0.985 : 1.0
+
+                            Behavior on color { ColorAnimation { duration: 120 } }
+                            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                            Behavior on border.color { ColorAnimation { duration: 120 } }
 
                             RowLayout {
                                 anchors.fill: parent
@@ -120,17 +142,32 @@ Item {
                                     font.family: "Font Awesome 5 Pro Solid"
                                     font.pixelSize: 16
                                     color: mouseArea.containsMouse ? accentColor : textSecondary
+                                    Behavior on color { ColorAnimation { duration: 120 } }
                                 }
 
-                                Text {
-                                    text: modelData.name
-                                    font.family: "Codec Pro"
-                                    font.pixelSize: 12
-                                    font.weight: Font.Medium
-                                    color: textPrimary
-                                    elide: Text.ElideRight
+                                ColumnLayout {
                                     Layout.fillWidth: true
-                                    verticalAlignment: Text.AlignVCenter
+                                    spacing: 2
+
+                                    Text {
+                                        text: modelData.name
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 12
+                                        font.weight: Font.Medium
+                                        color: textPrimary
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+
+                                    Text {
+                                        text: modelData.desc
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 10
+                                        color: textSecondary
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                        maximumLineCount: 1
+                                    }
                                 }
 
                                 Text {
@@ -139,6 +176,11 @@ Item {
                                     font.pixelSize: 10
                                     color: textSecondary
                                     opacity: mouseArea.containsMouse ? 1.0 : 0.6
+                                    transform: Translate {
+                                        x: mouseArea.containsMouse ? 2 : 0
+                                        Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                                    }
+                                    Behavior on opacity { NumberAnimation { duration: 120 } }
                                 }
                             }
 

@@ -8,22 +8,22 @@ Item {
     // Expose dialog for external access from dashboard
     property alias addPersonnelDialog: addPersonnelDialog
 
-    // CoreUI Colors
-    property color bgColor: "#ebedef"
+    // Compact light theme
+    property color bgColor: "#f6f7f9"
     property color cardColor: "#ffffff"
-    property color accentColor: "#321fdb"
-    property color textPrimary: "#3c4b64"
-    property color textSecondary: "#768192"
-    property color borderColor: "#d8dbe0"
-    property color successColor: "#2eb85c"
-    property color warningColor: "#f9b115"
-    property color dangerColor: "#e55353"
-    property color infoColor: "#3399ff"
+    property color accentColor: "#2563eb"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color borderColor: "#d0d7de"
+    property color successColor: "#16a34a"
+    property color warningColor: "#f59e0b"
+    property color dangerColor: "#dc2626"
+    property color infoColor: "#0ea5e9"
 
-    // Glass Effect Properties
-    property color glassBg: Qt.rgba(1, 1, 1, 0.85)
-    property color glassBorder: Qt.rgba(1, 1, 1, 0.6)
-    property int glassRadius: 8
+    // Card styling
+    property color glassBg: cardColor
+    property color glassBorder: borderColor
+    property int glassRadius: 6
 
     // Personnel data from database
     property var personnelList: Database.getPersonnel()
@@ -61,13 +61,13 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 20
-        spacing: 16
+        anchors.margins: 16
+        spacing: 12
 
         // Header
         RowLayout {
             Layout.fillWidth: true
-            spacing: 16
+            spacing: 12
 
             ColumnLayout {
                 spacing: 4
@@ -75,7 +75,7 @@ Item {
                 Text {
                     text: "Personnel Management"
                     font.family: "Codec Pro"
-                    font.pixelSize: 24
+                    font.pixelSize: 16
                     font.weight: Font.Medium
                     color: textPrimary
                 }
@@ -83,7 +83,7 @@ Item {
                 Text {
                     text: "Manage team members and their assignments"
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
                     color: textSecondary
                 }
             }
@@ -93,9 +93,10 @@ Item {
             // Add Personnel Button
             Rectangle {
                 width: addBtnRow.width + 24
-                height: 38
-                radius: 4
+                height: 32
+                radius: 6
                 color: addBtnMa.containsMouse ? Qt.darker(accentColor, 1.1) : accentColor
+                Behavior on color { ColorAnimation { duration: 120 } }
 
                 RowLayout {
                     id: addBtnRow
@@ -105,14 +106,14 @@ Item {
                     Text {
                         text: "\uf067"
                         font.family: "Font Awesome 5 Pro Solid"
-                        font.pixelSize: 12
+                        font.pixelSize: 10
                         color: "white"
                     }
 
                     Text {
                         text: "Add Personnel"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: "white"
                     }
                 }
@@ -150,27 +151,27 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 80
+                    Layout.preferredHeight: 64
                     color: glassBg
                     radius: glassRadius
                     border.color: glassBorder
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 16
-                        spacing: 12
+                            anchors.margins: 12
+                            spacing: 10
 
                         Rectangle {
-                            width: 48
-                            height: 48
-                            radius: 24
+                            width: 36
+                            height: 36
+                            radius: 18
                             color: Qt.lighter(modelData.color, 1.85)
 
                             Text {
                                 anchors.centerIn: parent
                                 text: modelData.icon
                                 font.family: "Font Awesome 5 Pro Solid"
-                                font.pixelSize: 18
+                                font.pixelSize: 13
                                 color: modelData.color
                             }
                         }
@@ -182,7 +183,7 @@ Item {
                             Text {
                                 text: modelData.count
                                 font.family: "Codec Pro"
-                                font.pixelSize: 24
+                                font.pixelSize: 16
                                 font.weight: Font.Medium
                                 color: textPrimary
                             }
@@ -190,7 +191,7 @@ Item {
                             Text {
                                 text: modelData.label
                                 font.family: "Codec Pro"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 color: textSecondary
                             }
                         }
@@ -228,9 +229,9 @@ Item {
                 // Table Header
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 48
+                    Layout.preferredHeight: 40
                     color: bgColor
-                    radius: 4
+                    radius: 6
 
                     RowLayout {
                         anchors.fill: parent
@@ -242,7 +243,7 @@ Item {
                             Layout.preferredWidth: 250
                             text: "Name"
                             font.family: "Codec Pro"
-                            font.pixelSize: 12
+                            font.pixelSize: 10
                             font.weight: Font.Medium
                             color: textSecondary
                         }
@@ -251,7 +252,7 @@ Item {
                             Layout.preferredWidth: 150
                             text: "Role"
                             font.family: "Codec Pro"
-                            font.pixelSize: 12
+                            font.pixelSize: 10
                             font.weight: Font.Medium
                             color: textSecondary
                         }
@@ -260,7 +261,7 @@ Item {
                             Layout.preferredWidth: 120
                             text: "Status"
                             font.family: "Codec Pro"
-                            font.pixelSize: 12
+                            font.pixelSize: 10
                             font.weight: Font.Medium
                             color: textSecondary
                         }
@@ -269,7 +270,7 @@ Item {
                             Layout.fillWidth: true
                             text: "Contact"
                             font.family: "Codec Pro"
-                            font.pixelSize: 12
+                            font.pixelSize: 10
                             font.weight: Font.Medium
                             color: textSecondary
                         }
@@ -278,7 +279,7 @@ Item {
                             Layout.preferredWidth: 80
                             text: "Actions"
                             font.family: "Codec Pro"
-                            font.pixelSize: 12
+                            font.pixelSize: 10
                             font.weight: Font.Medium
                             color: textSecondary
                             horizontalAlignment: Text.AlignHCenter
@@ -296,7 +297,7 @@ Item {
 
                     delegate: Rectangle {
                         width: personnelListView.width
-                        height: 56
+                        height: 46
                         color: delegateMa.containsMouse ? Qt.lighter(bgColor, 1.02) : cardColor
 
                         MouseArea {
@@ -324,16 +325,16 @@ Item {
                                 spacing: 12
 
                                 Rectangle {
-                                    width: 36
-                                    height: 36
-                                    radius: 18
+                                    width: 30
+                                    height: 30
+                                    radius: 15
                                     color: Qt.lighter(accentColor, 1.7)
 
                                     Text {
                                         anchors.centerIn: parent
                                         text: modelData.name ? modelData.name.charAt(0).toUpperCase() : "?"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 14
+                                        font.pixelSize: 11
                                         font.weight: Font.Medium
                                         color: accentColor
                                     }
@@ -342,7 +343,7 @@ Item {
                                 Text {
                                     text: modelData.name || "Unknown"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 13
+                                    font.pixelSize: 11
                                     color: textPrimary
                                 }
                             }
@@ -355,14 +356,14 @@ Item {
                                 Text {
                                     text: getRoleIcon(modelData.role)
                                     font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 10
+                                    font.pixelSize: 9
                                     color: textSecondary
                                 }
 
                                 Text {
                                     text: modelData.role || "—"
                                     font.family: "Codec Pro"
-                                    font.pixelSize: 13
+                                    font.pixelSize: 11
                                     color: textSecondary
                                 }
                             }
@@ -373,8 +374,8 @@ Item {
 
                                 Rectangle {
                                     width: statusText.width + 16
-                                    height: 24
-                                    radius: 12
+                                height: 20
+                                radius: 10
                                     color: Qt.lighter(getStatusColor(modelData.status), 1.85)
 
                                     Text {
@@ -382,7 +383,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: modelData.status || "Off Duty"
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 9
                                         color: getStatusColor(modelData.status)
                                     }
                                 }
@@ -393,7 +394,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: modelData.phone || modelData.email || "—"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 12
+                                font.pixelSize: 10
                                 color: textSecondary
                                 elide: Text.ElideRight
                             }
@@ -405,16 +406,16 @@ Item {
                                 spacing: 8
 
                                 Rectangle {
-                                    width: 28
-                                    height: 28
-                                    radius: 4
+                                    width: 24
+                                    height: 24
+                                    radius: 6
                                     color: editMa.containsMouse ? bgColor : "transparent"
 
                                     Text {
                                         anchors.centerIn: parent
                                         text: "\uf304"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 9
                                         color: accentColor
                                     }
 
@@ -435,16 +436,16 @@ Item {
                                 }
 
                                 Rectangle {
-                                    width: 28
-                                    height: 28
-                                    radius: 4
+                                    width: 24
+                                    height: 24
+                                    radius: 6
                                     color: deleteMa.containsMouse ? Qt.lighter(dangerColor, 1.9) : "transparent"
 
                                     Text {
                                         anchors.centerIn: parent
                                         text: "\uf1f8"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 9
                                         color: dangerColor
                                     }
 
@@ -468,8 +469,8 @@ Item {
                     Rectangle {
                         anchors.centerIn: parent
                         visible: personnelList.length === 0
-                        width: 300
-                        height: 200
+                        width: 260
+                        height: 160
 
                         ColumnLayout {
                             anchors.centerIn: parent
@@ -477,16 +478,16 @@ Item {
 
                             Rectangle {
                                 Layout.alignment: Qt.AlignHCenter
-                                width: 80
-                                height: 80
-                                radius: 40
+                                width: 56
+                                height: 56
+                                radius: 28
                                 color: bgColor
 
                                 Text {
                                     anchors.centerIn: parent
                                     text: "\uf0c0"
                                     font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 32
+                                    font.pixelSize: 18
                                     color: textSecondary
                                 }
                             }
@@ -495,7 +496,7 @@ Item {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: "No personnel added yet"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 16
+                                font.pixelSize: 12
                                 color: textPrimary
                             }
 
@@ -503,7 +504,7 @@ Item {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: "Add team members to get started"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 13
+                                font.pixelSize: 11
                                 color: textSecondary
                             }
                         }
@@ -521,7 +522,7 @@ Item {
     Dialog {
         id: addPersonnelDialog
         anchors.centerIn: parent
-        width: 400
+        width: 360
         modal: true
         padding: 0
         clip: false
@@ -530,14 +531,14 @@ Item {
 
         background: Rectangle {
             color: cardColor
-            radius: 4
+            radius: 6
             border.color: borderColor
         }
 
         header: Rectangle {
             color: cardColor
-            height: 50
-            radius: 4
+            height: 44
+            radius: 6
 
             Rectangle {
                 anchors.bottom: parent.bottom
@@ -552,7 +553,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Add Personnel"
                 font.family: "Codec Pro"
-                font.pixelSize: 16
+                font.pixelSize: 12
                 font.weight: Font.Medium
                 color: textPrimary
             }
@@ -577,15 +578,15 @@ Item {
                     Layout.rightMargin: 16
                     spacing: 4
 
-                    Text { text: "Full Name *"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                    Text { text: "Full Name *"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                     TextField {
                         id: addNameField
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 36
+                Layout.preferredHeight: 32
                         placeholderText: "Enter full name"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: textPrimary
                         placeholderTextColor: textSecondary
                         leftPadding: 10
@@ -604,15 +605,15 @@ Item {
                     Layout.rightMargin: 16
                     spacing: 4
 
-                    Text { text: "Role *"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                    Text { text: "Role *"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                     ComboBox {
                         id: addRoleCombo
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 36
+                Layout.preferredHeight: 32
                         model: ["Surveyor", "Assistant", "Instrument Man", "Chainman", "Driver", "Project Manager"]
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
 
                         contentItem: Text {
                             leftPadding: 10
@@ -630,11 +631,11 @@ Item {
 
                         delegate: ItemDelegate {
                             width: addRoleCombo.width
-                            height: 36
+                            height: 32
                             contentItem: Text {
                                 text: modelData
                                 font.family: "Codec Pro"
-                                font.pixelSize: 13
+                                font.pixelSize: 11
                                 color: textPrimary
                                 verticalAlignment: Text.AlignVCenter
                                 leftPadding: 8
@@ -676,15 +677,15 @@ Item {
                     Layout.rightMargin: 16
                     spacing: 4
 
-                    Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                    Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                     ComboBox {
                         id: addStatusCombo
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 36
+                Layout.preferredHeight: 32
                         model: ["Off Duty", "On Site", "Off Site", "On Leave"]
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
 
                         contentItem: Text {
                             leftPadding: 10
@@ -702,11 +703,11 @@ Item {
 
                         delegate: ItemDelegate {
                             width: addStatusCombo.width
-                            height: 36
+                            height: 32
                             contentItem: Text {
                                 text: modelData
                                 font.family: "Codec Pro"
-                                font.pixelSize: 13
+                                font.pixelSize: 11
                                 color: textPrimary
                                 verticalAlignment: Text.AlignVCenter
                                 leftPadding: 8
@@ -748,15 +749,15 @@ Item {
                     Layout.rightMargin: 16
                     spacing: 4
 
-                    Text { text: "Phone"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                    Text { text: "Phone"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                     TextField {
                         id: addPhoneField
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 36
+                Layout.preferredHeight: 32
                         placeholderText: "+263 7X XXX XXXX"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: textPrimary
                         placeholderTextColor: textSecondary
                         leftPadding: 10
@@ -775,8 +776,8 @@ Item {
 
         footer: Rectangle {
             color: bgColor
-            height: 56
-            radius: 4
+            height: 48
+            radius: 6
 
             Rectangle {
                 anchors.top: parent.top
@@ -794,8 +795,8 @@ Item {
 
                 Rectangle {
                     width: 80
-                    height: 34
-                    radius: 4
+                    height: 30
+                    radius: 6
                     color: "transparent"
                     border.color: borderColor
 
@@ -803,7 +804,7 @@ Item {
                         anchors.centerIn: parent
                         text: "Cancel"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: textSecondary
                     }
 
@@ -824,7 +825,7 @@ Item {
                         anchors.centerIn: parent
                         text: "Add"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: "white"
                     }
 
@@ -857,7 +858,7 @@ Item {
     Dialog {
         id: editPersonnelDialog
         anchors.centerIn: parent
-        width: 400
+        width: 360
         modal: true
         padding: 0
         clip: false
@@ -888,7 +889,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "Edit Personnel"
                 font.family: "Codec Pro"
-                font.pixelSize: 16
+                font.pixelSize: 12
                 font.weight: Font.Medium
                 color: textPrimary
             }
@@ -905,14 +906,14 @@ Item {
                 Layout.rightMargin: 16
                 spacing: 4
 
-                Text { text: "Full Name *"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Full Name *"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 TextField {
                     id: editNameField
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
+                Layout.preferredHeight: 32
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
                     color: textPrimary
                     leftPadding: 10
 
@@ -930,15 +931,15 @@ Item {
                 Layout.rightMargin: 16
                 spacing: 4
 
-                Text { text: "Role *"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Role *"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 ComboBox {
                     id: editRoleCombo
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
+                Layout.preferredHeight: 32
                     model: ["Surveyor", "Assistant", "Instrument Man", "Chainman", "Driver", "Project Manager"]
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
 
                     contentItem: Text {
                         leftPadding: 10
@@ -956,11 +957,11 @@ Item {
 
                     delegate: ItemDelegate {
                         width: editRoleCombo.width
-                        height: 36
+                            height: 32
                         contentItem: Text {
                             text: modelData
                             font.family: "Codec Pro"
-                            font.pixelSize: 13
+                            font.pixelSize: 11
                             color: textPrimary
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: 8
@@ -1001,15 +1002,15 @@ Item {
                 Layout.rightMargin: 16
                 spacing: 4
 
-                Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Status"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 ComboBox {
                     id: editStatusCombo
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
+                Layout.preferredHeight: 32
                     model: ["Off Duty", "On Site", "Off Site", "On Leave"]
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
 
                     contentItem: Text {
                         leftPadding: 10
@@ -1027,11 +1028,11 @@ Item {
 
                     delegate: ItemDelegate {
                         width: editStatusCombo.width
-                        height: 36
+                            height: 32
                         contentItem: Text {
                             text: modelData
                             font.family: "Codec Pro"
-                            font.pixelSize: 13
+                            font.pixelSize: 11
                             color: textPrimary
                             verticalAlignment: Text.AlignVCenter
                             leftPadding: 8
@@ -1072,14 +1073,14 @@ Item {
                 Layout.rightMargin: 16
                 spacing: 4
 
-                Text { text: "Phone"; font.family: "Codec Pro"; font.pixelSize: 12; color: textPrimary }
+                Text { text: "Phone"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
 
                 TextField {
                     id: editPhoneField
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 36
+                Layout.preferredHeight: 32
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
                     color: textPrimary
                     leftPadding: 10
 
@@ -1124,7 +1125,7 @@ Item {
                         anchors.centerIn: parent
                         text: "Cancel"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: textSecondary
                     }
 
@@ -1145,7 +1146,7 @@ Item {
                         anchors.centerIn: parent
                         text: "Save"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: "white"
                     }
 
@@ -1173,7 +1174,7 @@ Item {
     Dialog {
         id: deleteConfirmDialog
         anchors.centerIn: parent
-        width: 350
+        width: 320
         modal: true
         padding: 0
 
@@ -1192,16 +1193,16 @@ Item {
 
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
-                width: 64
-                height: 64
-                radius: 32
+                width: 52
+                height: 52
+                radius: 26
                 color: Qt.lighter(dangerColor, 1.85)
 
                 Text {
                     anchors.centerIn: parent
                     text: "\uf1f8"
                     font.family: "Font Awesome 5 Pro Solid"
-                    font.pixelSize: 24
+                    font.pixelSize: 16
                     color: dangerColor
                 }
             }
@@ -1210,7 +1211,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 text: "Delete Personnel?"
                 font.family: "Codec Pro"
-                font.pixelSize: 16
+                font.pixelSize: 12
                 font.weight: Font.Medium
                 color: textPrimary
             }
@@ -1221,7 +1222,7 @@ Item {
                 Layout.rightMargin: 20
                 text: "Are you sure you want to remove\n\"" + deletePersonnelName + "\"?"
                 font.family: "Codec Pro"
-                font.pixelSize: 13
+                font.pixelSize: 11
                 color: textSecondary
                 horizontalAlignment: Text.AlignHCenter
             }
@@ -1237,8 +1238,8 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 38
-                    radius: 4
+                    height: 32
+                    radius: 6
                     color: "transparent"
                     border.color: borderColor
 
@@ -1246,7 +1247,7 @@ Item {
                         anchors.centerIn: parent
                         text: "Cancel"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: textSecondary
                     }
 
@@ -1259,15 +1260,15 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 38
-                    radius: 4
+                    height: 32
+                    radius: 6
                     color: dangerColor
 
                     Text {
                         anchors.centerIn: parent
                         text: "Delete"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: "white"
                     }
 
