@@ -36,8 +36,8 @@ Dialog {
         descField.text = pointDesc
     }
 
-    // Reset fields
-    function reset() {
+    // Clear form fields
+    function clearFields() {
         pointName = ""
         coordY = 0.0
         coordX = 0.0

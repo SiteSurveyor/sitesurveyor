@@ -195,6 +195,7 @@ Window {
 
     CADOptionsDialog {
         id: optionsDialog
+        cadPage: root
     }
 
 
@@ -284,7 +285,7 @@ Window {
 
                     contentItem: Text {
                         leftPadding: 10
-                        rightPadding: crsCombo.indicator.width + spacing
+                        rightPadding: crsCombo.indicator.width + 10
                         text: crsCombo.displayText
                         font: crsCombo.font
                         color: "white"
@@ -1652,7 +1653,7 @@ Window {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                          root.selectedTool = 30
-                                         addPointDialog.reset()
+                                         addPointDialog.clearFields()
                                          addPointDialog.open()
                                     }
                                 }

@@ -8,101 +8,148 @@ Item {
     // Signal to notify Main.qml of selection
     signal disciplineSelected(string name)
 
-    property string bgGradientStart: '#ffffff'
-    property string bgGradientStop: '#f0f0f0'
-    property string textColor: '#333333'
+    // Simple, consistent light theme
+    property color bgColor: "#f6f7f9"
+    property color cardColor: "#ffffff"
+    property color borderColor: "#d0d7de"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color accentColor: "#2563eb"
+
+    property int pageMargin: Math.max(12, Math.min(24, Math.round(Math.min(width, height) * 0.04)))
+    property int maxGridWidth: 900
 
     Rectangle {
-        id: bg
         anchors.fill: parent
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0.0; color: bgGradientStart }
-            GradientStop { position: 1.0; color: bgGradientStop }
-        }
+        color: bgColor
     }
 
     ColumnLayout {
-        anchors.centerIn: parent
-        spacing: 30
-        width: Math.min(parent.width * 0.8, 1000)
+        anchors.fill: parent
+        anchors.margins: pageMargin
+        spacing: 16
 
-        Text {
-            text: "Select Discipline"
-            font.family: "Codec Pro"
-            font.pixelSize: 28
-            font.weight: Font.Light
-            color: "#555555"
-            Layout.alignment: Qt.AlignHCenter
+        // Header Section
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
+            spacing: 6
+            Layout.preferredWidth: 640
+
+            Image {
+                Layout.alignment: Qt.AlignHCenter
+                source: "qrc:/logo/SiteSurveyor.png"
+                sourceSize.height: 32
+                fillMode: Image.PreserveAspectFit
+            }
+
+            Text {
+                text: "Select discipline"
+                font.family: "Codec Pro"
+                font.pixelSize: 18
+                font.weight: Font.Medium
+                color: textPrimary
+                horizontalAlignment: Text.AlignHCenter
+                Layout.fillWidth: true
+            }
+
+            Text {
+                text: "Choose a module to continue"
+                font.family: "Codec Pro"
+                font.pixelSize: 11
+                color: textSecondary
+                horizontalAlignment: Text.AlignHCenter
+                Layout.fillWidth: true
+            }
         }
 
-        GridLayout {
-            columns: 3
-            columnSpacing: 20
-            rowSpacing: 20
+        // Disciplines Grid
+        Item {
             Layout.fillWidth: true
+            Layout.fillHeight: true
 
-            Repeater {
-                model: ListModel {
-                    ListElement { name: "Engineering Surveying"; icon: "\uf5ae" } // ruler-combined
-                    ListElement { name: "Mining Surveying"; icon: "\uf6e3" } // hammer
-                    ListElement { name: "Geodetic Surveying"; icon: "\uf57d" } // globe-americas
-                    ListElement { name: "Cadastral Surveying"; icon: "\uf5a0" } // map-marked
-                    ListElement { name: "Remote Sensing"; icon: "\uf7c0" } // satellite
-                    ListElement { name: "Topographic Surveying"; icon: "\uf6fc" } // mountain
-                }
+            Item {
+                id: gridContainer
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.min(parent.width, maxGridWidth)
 
-                delegate: Rectangle {
-                    id: tile
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 160
-                    radius: 8
-                    color: "white"
+                GridView {
+                    id: disciplinesGrid
+                    anchors.fill: parent
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
 
-                    // Shadow effect (simulated)
-                    layer.enabled: true
-                    // Note: GraphicalEffects for DropShadow might be missing,
-                    // so we use a simple border/color change for now or simple opacity
+                    property int columns: Math.max(1, Math.min(3, Math.floor(width / 320)))
+                    cellWidth: Math.floor(width / columns)
+                    cellHeight: 64
 
-                    // Thinner, subtler border
-                    border.color: mouseArea.containsMouse ? "#0d8bfd" : "#efefef"
-                    border.width: mouseArea.containsMouse ? 1 : 1
-
-                    Behavior on border.color { ColorAnimation { duration: 200 } }
-                    Behavior on scale { NumberAnimation { duration: 100 } }
-
-                    scale: mouseArea.pressed ? 0.98 : (mouseArea.containsMouse ? 1.01 : 1.0)
-
-                    Column {
-                        anchors.centerIn: parent
-                        spacing: 12
-
-                        Text {
-                            text: model.icon
-                            font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 32
-                            color: mouseArea.containsMouse ? "#0d8bfd" : "#777777"
-                            anchors.horizontalCenter: parent.horizontalCenter
-
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                        }
-
-                        Text {
-                            text: model.name
-                            font.family: "Codec Pro"
-                            font.pixelSize: 14
-                            font.weight: Font.Normal
-                            color: "#555555"
-                            anchors.horizontalCenter: parent.horizontalCenter
-                        }
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
                     }
 
-                    MouseArea {
-                        id: mouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.disciplineSelected(model.name)
+                    model: [
+                        { name: "Engineering Surveying", icon: "\uf5ae" },
+                        { name: "Mining Surveying", icon: "\uf6e3" },
+                        { name: "Geodetic Surveying", icon: "\uf57d" },
+                        { name: "Cadastral Surveying", icon: "\uf5a0" },
+                        { name: "Remote Sensing", icon: "\uf7c0" },
+                        { name: "Topographic Surveying", icon: "\uf6fc" }
+                    ]
+
+                    delegate: Item {
+                        width: disciplinesGrid.cellWidth
+                        height: disciplinesGrid.cellHeight
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            radius: 6
+                            color: mouseArea.containsMouse ? Qt.lighter(cardColor, 1.02) : cardColor
+                            border.color: mouseArea.containsMouse ? accentColor : borderColor
+                            border.width: 1
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 10
+
+                                Text {
+                                    text: modelData.icon
+                                    font.family: "Font Awesome 5 Pro Solid"
+                                    font.pixelSize: 16
+                                    color: mouseArea.containsMouse ? accentColor : textSecondary
+                                }
+
+                                Text {
+                                    text: modelData.name
+                                    font.family: "Codec Pro"
+                                    font.pixelSize: 12
+                                    font.weight: Font.Medium
+                                    color: textPrimary
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Text {
+                                    text: "\uf054"
+                                    font.family: "Font Awesome 5 Pro Solid"
+                                    font.pixelSize: 10
+                                    color: textSecondary
+                                    opacity: mouseArea.containsMouse ? 1.0 : 0.6
+                                }
+                            }
+
+                            MouseArea {
+                                id: mouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.disciplineSelected(modelData.name)
+                            }
+                        }
                     }
                 }
             }

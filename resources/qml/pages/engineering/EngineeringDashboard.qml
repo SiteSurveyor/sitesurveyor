@@ -880,7 +880,7 @@ Item {
 
                                                     onPaint: {
                                                         var ctx = getContext("2d");
-                                                        ctx.reset();
+                                                        ctx.clearRect(0, 0, width, height);
                                                         ctx.beginPath();
                                                         ctx.moveTo(0, 0);
                                                         ctx.lineTo(width, 0);

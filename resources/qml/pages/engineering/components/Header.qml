@@ -6,7 +6,7 @@ Rectangle {
     id: root
 
     property string title: "Dashboard"
-    property string projectName: Database.currentProject() || "Project"
+    property string projectName: Database.currentProject || "Project"
     signal toggleSidebar()
     signal exitRequested()
 

@@ -13,17 +13,19 @@ Dialog {
     standardButtons: Dialog.Ok | Dialog.Cancel | Dialog.Apply
 
     // Property bindings to the main CADPage state (to be injected)
-    // We expect parent to be the CADPage or have these properties
-    property var cadPage: parent
+    property var cadPage: null
 
-    // Temporary state
-    property int tempCrosshairSize: cadPage.crosshairSize
-    property int tempPickboxSize: cadPage.pickboxSize
-    property int tempSnapMarkerSize: cadPage.snapMarkerSize
-    property int tempSelectedCRS: cadPage.selectedCRS
-    property string tempCustomEpsg: cadPage.customEpsg
+    // Temporary state (guarded so the dialog can be constructed before cadPage is set)
+    property int tempCrosshairSize: (cadPage && cadPage.crosshairSize !== undefined) ? cadPage.crosshairSize : 5
+    property int tempPickboxSize: (cadPage && cadPage.pickboxSize !== undefined) ? cadPage.pickboxSize : 5
+    property int tempSnapMarkerSize: (cadPage && cadPage.snapMarkerSize !== undefined) ? cadPage.snapMarkerSize : 10
+    property int tempSelectedCRS: (cadPage && cadPage.selectedCRS !== undefined) ? cadPage.selectedCRS : 0
+    property string tempCustomEpsg: (cadPage && cadPage.customEpsg !== undefined) ? cadPage.customEpsg : ""
 
     onOpened: {
+        if (!cadPage)
+            return
+
         tempCrosshairSize = cadPage.crosshairSize
         tempPickboxSize = cadPage.pickboxSize
         tempSnapMarkerSize = cadPage.snapMarkerSize
@@ -35,6 +37,9 @@ Dialog {
     onAccepted: applySettings()
 
     function applySettings() {
+        if (!cadPage)
+            return
+
         cadPage.crosshairSize = tempCrosshairSize
         cadPage.pickboxSize = tempPickboxSize
         cadPage.snapMarkerSize = tempSnapMarkerSize

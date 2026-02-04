@@ -13,18 +13,22 @@ Item {
     signal projectSelected(int projectId, string projectName)
     signal backRequested()
 
-    // CoreUI Light theme colors (matching dashboard)
-    property color bgColor: "#ebedef"
+    // Simple light theme (consistent + compact)
+    property color bgColor: "#f6f7f9"
     property color cardColor: "#ffffff"
-    property color cardHoverColor: "#f8f9fa"
-    property color accentColor: "#321fdb"
-    property color textPrimary: "#3c4b64"
-    property color textSecondary: "#768192"
-    property color borderColor: "#d8dbe0"
-    property color dangerColor: "#e55353"
-    property color successColor: "#2eb85c"
-    property color warningColor: "#f9b115"
-    property color infoColor: "#39f"
+    property color cardHoverColor: "#f2f4f7"
+    property color accentColor: "#2563eb"
+    property color textPrimary: "#111827"
+    property color textSecondary: "#6b7280"
+    property color borderColor: "#d0d7de"
+    property color dangerColor: "#dc2626"
+    property color successColor: accentColor
+    property color warningColor: accentColor
+    property color infoColor: accentColor
+
+    property int pageMargin: Math.max(12, Math.min(24, Math.round(Math.min(width, height) * 0.035)))
+    property bool compactHeader: width < 900
+    property bool veryCompactHeader: width < 740
 
     Rectangle {
         anchors.fill: parent
@@ -150,49 +154,73 @@ Item {
     
     function getStatusColor(status) {
         switch(status) {
-            case "Active": return successColor
-            case "Completed": return accentColor
+            case "Active": return accentColor
+            case "Completed": return textSecondary
             case "Archived": return textSecondary
-            default: return successColor
+            default: return textSecondary
         }
+    }
+
+    function getFilterCount(statusKey) {
+        var list = allProjects || []
+
+        // Mirror search filtering so counts stay meaningful while typing.
+        if (searchQuery && searchQuery.length > 0) {
+            var query = searchQuery.toLowerCase()
+            list = list.filter(function(p) {
+                return (p.name && p.name.toLowerCase().indexOf(query) >= 0) ||
+                       (p.description && p.description.toLowerCase().indexOf(query) >= 0)
+            })
+        }
+
+        if (statusKey === "all")
+            return list.length
+
+        return list.filter(function(p) {
+            return (p.status || "Active") === statusKey
+        }).length
     }
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 24
+        anchors.margins: pageMargin
         spacing: 16
 
         // Header Card - Enhanced with search, sort, filter
         Rectangle {
             Layout.fillWidth: true
-            height: 72
-            radius: 8
+            height: 56
+            radius: 6
             color: cardColor
             border.color: borderColor
             border.width: 1
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                spacing: 12
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 10
 
                 // Back button
                 Rectangle {
-                    width: 40
-                    height: 40
-                    radius: 8
+                    width: 32
+                    height: 32
+                    radius: 6
                     color: backMa.containsMouse ? bgColor : "transparent"
                     border.color: backMa.containsMouse ? accentColor : borderColor
                     border.width: 1
 
                     Behavior on border.color { ColorAnimation { duration: 150 } }
 
+                    ToolTip.visible: backMa.containsMouse
+                    ToolTip.text: "Back"
+                    ToolTip.delay: 500
+
                     Text {
                         anchors.centerIn: parent
                         text: "\uf060"
                         font.family: "Font Awesome 5 Pro Solid"
-                        font.pixelSize: 14
+                        font.pixelSize: 12
                         color: backMa.containsMouse ? accentColor : textPrimary
                     }
 
@@ -208,14 +236,15 @@ Item {
                 // Vertical separator
                 Rectangle {
                     width: 1
-                    height: 32
+                    height: 24
                     color: borderColor
                 }
 
                 // Logo
                 Image {
+                    visible: !veryCompactHeader
                     source: "qrc:/logo/SiteSurveyor.png"
-                    sourceSize.height: 36
+                    sourceSize.height: 28
                     fillMode: Image.PreserveAspectFit
                 }
 
@@ -226,16 +255,15 @@ Item {
                     Text {
                         text: discipline
                         font.family: "Codec Pro"
-                        font.pixelSize: 16
-                        font.weight: Font.Bold
+                        font.pixelSize: 13
+                        font.weight: Font.Medium
                         color: textPrimary
                     }
 
                     Text {
-                        text: allProjects.length + " project" + (allProjects.length !== 1 ? "s" : "") + 
-                              (projectsList.length !== allProjects.length ? " (" + projectsList.length + " shown)" : "")
+                        text: allProjects.length + " " + (allProjects.length !== 1 ? "projects" : "project")
                         font.family: "Codec Pro"
-                        font.pixelSize: 11
+                        font.pixelSize: 9
                         color: textSecondary
                     }
                 }
@@ -244,8 +272,8 @@ Item {
 
                 // Functional Search field
                 Rectangle {
-                    width: 220
-                    height: 36
+                    width: Math.max(160, Math.min(260, Math.round(root.width * 0.22)))
+                    height: 32
                     radius: 6
                     color: searchField.activeFocus ? "#ffffff" : bgColor
                     border.color: searchField.activeFocus ? accentColor : borderColor
@@ -253,14 +281,14 @@ Item {
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
                         spacing: 8
 
                         Text {
                             text: "\uf002"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 12
+                            font.pixelSize: 11
                             color: textSecondary
                         }
 
@@ -270,7 +298,7 @@ Item {
                             Layout.fillHeight: true
                             placeholderText: "Search projects..."
                             font.family: "Codec Pro"
-                            font.pixelSize: 12
+                            font.pixelSize: 11
                             color: textPrimary
                             placeholderTextColor: textSecondary
                             background: Item {}
@@ -282,9 +310,9 @@ Item {
 
                         // Clear button
                         Rectangle {
-                            width: 18
-                            height: 18
-                            radius: 9
+                            width: 16
+                            height: 16
+                            radius: 8
                             color: clearSearchMa.containsMouse ? borderColor : "transparent"
                             visible: searchField.text.length > 0
 
@@ -292,7 +320,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "\uf00d"
                                 font.family: "Font Awesome 5 Pro Solid"
-                                font.pixelSize: 9
+                                font.pixelSize: 8
                                 color: textSecondary
                             }
 
@@ -312,8 +340,8 @@ Item {
 
                 // Sort dropdown
                 Rectangle {
-                    width: sortRow.width + 24
-                    height: 36
+                    width: sortRow.width + 20
+                    height: 32
                     radius: 6
                     color: sortMa.containsMouse ? Qt.darker(bgColor, 1.03) : bgColor
                     border.color: borderColor
@@ -327,21 +355,22 @@ Item {
                         Text {
                             text: "\uf0dc"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 10
+                            font.pixelSize: 9
                             color: textSecondary
                         }
 
                         Text {
+                            visible: !veryCompactHeader
                             text: sortBy === "name" ? "Name" : sortBy === "date" ? "Created" : "Recent"
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                             color: textPrimary
                         }
 
                         Text {
                             text: "\uf078"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 8
+                            font.pixelSize: 7
                             color: textSecondary
                         }
                     }
@@ -384,8 +413,8 @@ Item {
 
                 // View toggle (Grid/List)
                 Rectangle {
-                    width: 72
-                    height: 36
+                    width: 64
+                    height: 32
                     radius: 6
                     color: bgColor
                     border.color: borderColor
@@ -393,7 +422,7 @@ Item {
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 3
+                        anchors.margins: 2
                         spacing: 0
 
                         Rectangle {
@@ -406,7 +435,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "\uf00a"
                                 font.family: "Font Awesome 5 Pro Solid"
-                                font.pixelSize: 12
+                                font.pixelSize: 11
                                 color: viewMode === "grid" ? "white" : textSecondary
                             }
 
@@ -427,7 +456,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "\uf0c9"
                                 font.family: "Font Awesome 5 Pro Solid"
-                                font.pixelSize: 12
+                                font.pixelSize: 11
                                 color: viewMode === "list" ? "white" : textSecondary
                             }
 
@@ -442,12 +471,16 @@ Item {
 
                 // Create new project button
                 Rectangle {
-                    width: newProjectRow.width + 24
-                    height: 36
+                    width: newProjectRow.width + 20
+                    height: 32
                     radius: 6
                     color: newBtnMa.containsMouse ? Qt.darker(accentColor, 1.1) : accentColor
 
                     Behavior on color { ColorAnimation { duration: 150 } }
+
+                    ToolTip.visible: newBtnMa.containsMouse
+                    ToolTip.text: "New project"
+                    ToolTip.delay: 500
 
                     RowLayout {
                         id: newProjectRow
@@ -457,14 +490,15 @@ Item {
                         Text {
                             text: "\uf067"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                             color: "white"
                         }
 
                         Text {
+                            visible: !veryCompactHeader
                             text: "New"
                             font.family: "Codec Pro"
-                            font.pixelSize: 12
+                            font.pixelSize: 11
                             font.weight: Font.Medium
                             color: "white"
                         }
@@ -484,8 +518,8 @@ Item {
         // Bulk actions bar (visible when in selection mode)
         Rectangle {
             Layout.fillWidth: true
-            height: selectionMode ? 48 : 0
-            radius: 8
+            height: selectionMode ? 40 : 0
+            radius: 6
             color: Qt.lighter(accentColor, 1.95)
             border.color: Qt.lighter(accentColor, 1.5)
             border.width: 1
@@ -496,14 +530,14 @@ Item {
             
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
-                spacing: 12
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                spacing: 10
                 
                 // Checkbox for select all
                 Rectangle {
-                    width: 24
-                    height: 24
+                    width: 20
+                    height: 20
                     radius: 4
                     color: selectAllMa.containsMouse ? Qt.lighter(accentColor, 1.8) : "transparent"
                     border.color: accentColor
@@ -536,7 +570,7 @@ Item {
                 Text {
                     text: selectedProjects.length + " selected"
                     font.family: "Codec Pro"
-                    font.pixelSize: 13
+                    font.pixelSize: 11
                     font.weight: Font.Medium
                     color: accentColor
                 }
@@ -545,8 +579,8 @@ Item {
                 
                 // Bulk status change
                 Rectangle {
-                    width: statusBulkRow.width + 20
-                    height: 32
+                    width: statusBulkRow.width + 16
+                    height: 28
                     radius: 6
                     color: statusBulkMa.containsMouse ? Qt.lighter(accentColor, 1.7) : "transparent"
                     border.color: accentColor
@@ -561,14 +595,14 @@ Item {
                         Text {
                             text: "\uf0ec"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                             color: accentColor
                         }
                         
                         Text {
-                            text: "Change Status"
+                            text: "Status"
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                             color: accentColor
                         }
                     }
@@ -620,8 +654,8 @@ Item {
                 
                 // Bulk delete
                 Rectangle {
-                    width: deleteBulkRow.width + 20
-                    height: 32
+                    width: deleteBulkRow.width + 16
+                    height: 28
                     radius: 6
                     color: deleteBulkMa.containsMouse ? Qt.lighter(dangerColor, 1.8) : "transparent"
                     border.color: dangerColor
@@ -636,14 +670,14 @@ Item {
                         Text {
                             text: "\uf1f8"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                             color: dangerColor
                         }
                         
                         Text {
                             text: "Delete"
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                             color: dangerColor
                         }
                     }
@@ -659,8 +693,8 @@ Item {
                 
                 // Cancel selection
                 Rectangle {
-                    width: 32
-                    height: 32
+                    width: 28
+                    height: 28
                     radius: 6
                     color: cancelSelMa.containsMouse ? Qt.lighter(accentColor, 1.7) : "transparent"
                     
@@ -668,7 +702,7 @@ Item {
                         anchors.centerIn: parent
                         text: "\uf00d"
                         font.family: "Font Awesome 5 Pro Solid"
-                        font.pixelSize: 12
+                        font.pixelSize: 11
                         color: accentColor
                     }
                     
@@ -698,9 +732,9 @@ Item {
                 ]
                 
                 Rectangle {
-                    width: filterTabRow.width + 16
-                    height: 30
-                    radius: 15
+                    width: filterTabRow.width + 14
+                    height: 26
+                    radius: 13
                     color: filterStatus === modelData.key ? accentColor : 
                            filterTabMa.containsMouse ? Qt.lighter(accentColor, 1.9) : "transparent"
                     border.color: filterStatus === modelData.key ? accentColor : borderColor
@@ -714,15 +748,34 @@ Item {
                         Text {
                             text: modelData.icon
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 10
+                            font.pixelSize: 9
                             color: filterStatus === modelData.key ? "white" : textSecondary
                         }
                         
                         Text {
                             text: modelData.label
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                             color: filterStatus === modelData.key ? "white" : textPrimary
+                        }
+
+                        Rectangle {
+                            width: countText.width + 10
+                            height: 16
+                            radius: 8
+                            color: filterStatus === modelData.key ? Qt.rgba(1, 1, 1, 0.25) : bgColor
+                            border.color: filterStatus === modelData.key ? Qt.rgba(1, 1, 1, 0.35) : borderColor
+                            border.width: 1
+
+                            Text {
+                                id: countText
+                                anchors.centerIn: parent
+                                text: getFilterCount(modelData.key)
+                                font.family: "Codec Pro"
+                                font.pixelSize: 9
+                                font.weight: Font.Medium
+                                color: filterStatus === modelData.key ? "white" : textSecondary
+                            }
                         }
                     }
                     
@@ -740,9 +793,9 @@ Item {
             
             // Selection mode toggle
             Rectangle {
-                width: selectModeRow.width + 16
-                height: 30
-                radius: 15
+                width: selectModeRow.width + 14
+                height: 26
+                radius: 13
                 color: selectionMode ? warningColor : selectModeMa.containsMouse ? bgColor : "transparent"
                 border.color: selectionMode ? warningColor : borderColor
                 border.width: 1
@@ -755,14 +808,14 @@ Item {
                     Text {
                         text: "\uf14a"
                         font.family: "Font Awesome 5 Pro Solid"
-                        font.pixelSize: 10
+                        font.pixelSize: 9
                         color: selectionMode ? "white" : textSecondary
                     }
                     
                     Text {
                         text: selectionMode ? "Exit Select" : "Select"
                         font.family: "Codec Pro"
-                        font.pixelSize: 11
+                        font.pixelSize: 10
                         color: selectionMode ? "white" : textPrimary
                     }
                 }
@@ -791,9 +844,9 @@ Item {
             // Enhanced Empty state card with quick-start tips
             Rectangle {
                 anchors.centerIn: parent
-                width: 500
-                height: 420
-                radius: 12
+                width: Math.min(420, parent.width - 40)
+                height: Math.min(340, parent.height - 40)
+                radius: 8
                 color: cardColor
                 border.color: borderColor
                 border.width: 1
@@ -801,112 +854,112 @@ Item {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 32
-                    spacing: 20
+                    anchors.margins: 20
+                    spacing: 14
 
                     // Icon container
                     Rectangle {
                         Layout.alignment: Qt.AlignHCenter
-                        width: 72
-                        height: 72
-                        radius: 36
+                        width: 56
+                        height: 56
+                        radius: 28
                         color: Qt.lighter(accentColor, 1.92)
 
                         Text {
                             anchors.centerIn: parent
                             text: "\uf07b"
                             font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 28
+                            font.pixelSize: 20
                             color: accentColor
                         }
                     }
 
-                    Text {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: "Welcome to " + discipline
-                        font.family: "Codec Pro"
-                        font.pixelSize: 20
-                        font.weight: Font.Bold
-                        color: textPrimary
-                    }
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: discipline
+                font.family: "Codec Pro"
+                font.pixelSize: 14
+                font.weight: Font.Medium
+                color: textPrimary
+            }
 
-                    Text {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: "Get started by creating your first project"
-                        font.family: "Codec Pro"
-                        font.pixelSize: 13
-                        color: textSecondary
-                    }
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: "Create your first project"
+                font.family: "Codec Pro"
+                font.pixelSize: 11
+                color: textSecondary
+            }
 
                     // Quick start tips
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 120
-                        radius: 8
+                        height: 100
+                        radius: 6
                         color: bgColor
                         border.color: borderColor
                         border.width: 1
 
                         ColumnLayout {
                             anchors.fill: parent
-                            anchors.margins: 16
-                            spacing: 10
+                            anchors.margins: 12
+                            spacing: 8
 
-                            Text {
-                                text: "Quick Start Tips"
-                                font.family: "Codec Pro"
-                                font.pixelSize: 12
-                                font.weight: Font.Bold
-                                color: textPrimary
-                            }
+                    Text {
+                        text: "Tips"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 10
+                        font.weight: Font.Medium
+                        color: textPrimary
+                    }
 
-                            RowLayout {
-                                spacing: 10
-                                Text {
-                                    text: "\uf00c"
-                                    font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 10
-                                    color: successColor
-                                }
-                                Text {
-                                    text: "Set a project location by clicking on the map"
-                                    font.family: "Codec Pro"
-                                    font.pixelSize: 11
-                                    color: textSecondary
-                                }
-                            }
+                    RowLayout {
+                        spacing: 8
+                        Text {
+                            text: "\uf00c"
+                            font.family: "Font Awesome 5 Pro Solid"
+                            font.pixelSize: 9
+                            color: successColor
+                        }
+                        Text {
+                            text: "Set project location on map"
+                            font.family: "Codec Pro"
+                            font.pixelSize: 9
+                            color: textSecondary
+                        }
+                    }
 
-                            RowLayout {
-                                spacing: 10
-                                Text {
-                                    text: "\uf00c"
-                                    font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 10
-                                    color: successColor
-                                }
-                                Text {
-                                    text: "Import existing data from CSV files"
-                                    font.family: "Codec Pro"
-                                    font.pixelSize: 11
-                                    color: textSecondary
-                                }
-                            }
+                    RowLayout {
+                        spacing: 8
+                        Text {
+                            text: "\uf00c"
+                            font.family: "Font Awesome 5 Pro Solid"
+                            font.pixelSize: 9
+                            color: successColor
+                        }
+                        Text {
+                            text: "Import data from CSV"
+                            font.family: "Codec Pro"
+                            font.pixelSize: 9
+                            color: textSecondary
+                        }
+                    }
 
-                            RowLayout {
-                                spacing: 10
-                                Text {
-                                    text: "\uf00c"
-                                    font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 10
-                                    color: successColor
-                                }
-                                Text {
-                                    text: "Add survey points, traverses, and level runs"
-                                    font.family: "Codec Pro"
-                                    font.pixelSize: 11
-                                    color: textSecondary
-                                }
-                            }
+                    RowLayout {
+                        spacing: 8
+                        Text {
+                            text: "\uf00c"
+                            font.family: "Font Awesome 5 Pro Solid"
+                            font.pixelSize: 9
+                            color: successColor
+                        }
+                        Text {
+                            text: "Add survey points & data"
+                            font.family: "Codec Pro"
+                            font.pixelSize: 9
+                            color: textSecondary
+                        }
+                    }
                         }
                     }
 
@@ -915,9 +968,9 @@ Item {
                     // Create button
                     Rectangle {
                         Layout.alignment: Qt.AlignHCenter
-                        width: createFirstRow.width + 40
-                        height: 48
-                        radius: 8
+                        width: createFirstRow.width + 34
+                        height: 40
+                        radius: 6
                         color: emptyBtnMa.containsMouse ? Qt.darker(accentColor, 1.1) : accentColor
 
                         Behavior on color { ColorAnimation { duration: 150 } }
@@ -930,14 +983,14 @@ Item {
                             Text {
                                 text: "\uf067"
                                 font.family: "Font Awesome 5 Pro Solid"
-                                font.pixelSize: 14
+                                font.pixelSize: 12
                                 color: "white"
                             }
 
                             Text {
-                                text: "Create Your First Project"
+                                text: "Create Project"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 14
+                                font.pixelSize: 11
                                 font.weight: Font.Medium
                                 color: "white"
                             }
@@ -957,9 +1010,9 @@ Item {
             // No results state (when filtering produces no results)
             Rectangle {
                 anchors.centerIn: parent
-                width: 350
-                height: 200
-                radius: 12
+                width: Math.min(340, parent.width - 40)
+                height: Math.min(190, parent.height - 40)
+                radius: 8
                 color: cardColor
                 border.color: borderColor
                 border.width: 1
@@ -973,7 +1026,7 @@ Item {
                         Layout.alignment: Qt.AlignHCenter
                         text: "\uf002"
                         font.family: "Font Awesome 5 Pro Solid"
-                        font.pixelSize: 32
+                        font.pixelSize: 24
                         color: textSecondary
                     }
                     
@@ -981,7 +1034,7 @@ Item {
                         Layout.alignment: Qt.AlignHCenter
                         text: "No projects found"
                         font.family: "Codec Pro"
-                        font.pixelSize: 16
+                        font.pixelSize: 13
                         font.weight: Font.Medium
                         color: textPrimary
                     }
@@ -992,14 +1045,14 @@ Item {
                               "No results for \"" + searchQuery + "\"" :
                               "No " + filterStatus + " projects"
                         font.family: "Codec Pro"
-                        font.pixelSize: 12
+                        font.pixelSize: 11
                         color: textSecondary
                     }
                     
                     Rectangle {
                         Layout.alignment: Qt.AlignHCenter
-                        width: clearFiltersText.width + 24
-                        height: 32
+                        width: clearFiltersText.width + 20
+                        height: 28
                         radius: 6
                         color: clearFiltersMa.containsMouse ? bgColor : "transparent"
                         border.color: borderColor
@@ -1010,7 +1063,7 @@ Item {
                             anchors.centerIn: parent
                             text: "Clear Filters"
                             font.family: "Codec Pro"
-                            font.pixelSize: 12
+                            font.pixelSize: 11
                             color: accentColor
                         }
                         
@@ -1036,10 +1089,14 @@ Item {
                 anchors.topMargin: 4
                 visible: viewMode === "grid" && projectsList.length > 0
 
-                property int columns: Math.max(1, Math.floor(width / 360))
+                property int columns: Math.max(1, Math.floor(width / 320))
                 cellWidth: width / columns
-                cellHeight: 200
+                cellHeight: 170
                 clip: true
+
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
 
                 model: projectsList
 
@@ -1054,19 +1111,16 @@ Item {
                     Rectangle {
                         id: projectCard
                         anchors.fill: parent
-                        anchors.margins: 8
-                        radius: 12
+                        anchors.margins: 6
+                        radius: 8
                         color: isItemSelected ? Qt.lighter(accentColor, 1.95) : 
                                cardMa.containsMouse ? cardHoverColor : cardColor
                         border.color: isItemSelected ? accentColor : 
                                       cardMa.containsMouse ? accentColor : borderColor
                         border.width: isItemSelected || cardMa.containsMouse ? 2 : 1
 
-                        Behavior on color { ColorAnimation { duration: 150 } }
-                        Behavior on border.color { ColorAnimation { duration: 150 } }
-                        Behavior on scale { NumberAnimation { duration: 100 } }
-
-                        scale: cardMa.containsMouse ? 1.01 : 1.0
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on border.color { ColorAnimation { duration: 120 } }
 
                         MouseArea {
                             id: cardMa
@@ -1085,18 +1139,18 @@ Item {
 
                         ColumnLayout {
                             anchors.fill: parent
-                            anchors.margins: 16
-                            spacing: 8
+                            anchors.margins: 12
+                            spacing: 6
 
                             // Top row: Checkbox (if selection mode), Icon, Title, Status, Delete
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 10
+                                spacing: 8
                                 
                                 // Selection checkbox
                                 Rectangle {
-                                    width: 22
-                                    height: 22
+                                    width: 20
+                                    height: 20
                                     radius: 4
                                     color: isItemSelected ? accentColor : "transparent"
                                     border.color: isItemSelected ? accentColor : borderColor
@@ -1107,7 +1161,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: "\uf00c"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 10
                                         color: "white"
                                         visible: isItemSelected
                                     }
@@ -1115,16 +1169,16 @@ Item {
 
                                 // Project icon
                                 Rectangle {
-                                    width: 40
-                                    height: 40
-                                    radius: 8
+                                    width: 34
+                                    height: 34
+                                    radius: 6
                                     color: Qt.lighter(getStatusColor(itemStatus), 1.85)
 
                                     Text {
                                         anchors.centerIn: parent
                                         text: "\uf07c"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 16
+                                        font.pixelSize: 14
                                         color: getStatusColor(itemStatus)
                                     }
                                 }
@@ -1136,8 +1190,8 @@ Item {
                                     Text {
                                         text: modelData.name
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 14
-                                        font.weight: Font.Bold
+                                        font.pixelSize: 13
+                                        font.weight: Font.Medium
                                         color: textPrimary
                                         elide: Text.ElideRight
                                         Layout.fillWidth: true
@@ -1146,16 +1200,16 @@ Item {
                                     Text {
                                         text: formatRelativeTime(modelData.lastAccessed || modelData.createdAt)
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 10
+                                        font.pixelSize: 9
                                         color: textSecondary
                                     }
                                 }
                                 
                                 // Status badge
                                 Rectangle {
-                                    width: statusText.width + 12
-                                    height: 22
-                                    radius: 11
+                                    width: statusText.width + 10
+                                    height: 18
+                                    radius: 9
                                     color: Qt.lighter(getStatusColor(itemStatus), 1.8)
                                     
                                     Text {
@@ -1163,7 +1217,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: itemStatus
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 9
+                                        font.pixelSize: 8
                                         font.weight: Font.Medium
                                         color: getStatusColor(itemStatus)
                                     }
@@ -1208,8 +1262,8 @@ Item {
 
                                 // Delete button
                                 Rectangle {
-                                    width: 28
-                                    height: 28
+                                    width: 24
+                                    height: 24
                                     radius: 6
                                     color: deleteMa.containsMouse ? Qt.lighter(dangerColor, 1.75) : "transparent"
                                     opacity: cardMa.containsMouse ? 1 : 0.3
@@ -1221,7 +1275,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: "\uf1f8"
                                         font.family: "Font Awesome 5 Pro Solid"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 10
                                         color: deleteMa.containsMouse ? dangerColor : textSecondary
                                     }
 
@@ -1243,7 +1297,7 @@ Item {
                             Text {
                                 text: modelData.description || "No description provided."
                                 font.family: "Codec Pro"
-                                font.pixelSize: 11
+                                font.pixelSize: 10
                                 color: textSecondary
                                 lineHeight: 1.3
                                 elide: Text.ElideRight
@@ -1261,9 +1315,9 @@ Item {
                                 
                                 // Point count badge
                                 Rectangle {
-                                    width: pointsRow.width + 12
-                                    height: 24
-                                    radius: 6
+                                    width: pointsRow.width + 10
+                                    height: 20
+                                    radius: 5
                                     color: bgColor
 
                                     RowLayout {
@@ -1274,14 +1328,14 @@ Item {
                                         Text {
                                             text: "\uf3c5"
                                             font.family: "Font Awesome 5 Pro Solid"
-                                            font.pixelSize: 9
+                                            font.pixelSize: 8
                                             color: accentColor
                                         }
 
                                         Text {
                                             text: pointCount + " point" + (pointCount !== 1 ? "s" : "")
                                             font.family: "Codec Pro"
-                                            font.pixelSize: 10
+                                            font.pixelSize: 9
                                             color: textPrimary
                                         }
                                     }
@@ -1290,9 +1344,9 @@ Item {
                                 // Location Badge
                                 Rectangle {
                                     visible: modelData.centerY !== 0 || modelData.centerX !== 0
-                                    width: locRow.width + 12
-                                    height: 24
-                                    radius: 6
+                                    width: locRow.width + 10
+                                    height: 20
+                                    radius: 5
                                     color: bgColor
 
                                     RowLayout {
@@ -1303,14 +1357,14 @@ Item {
                                         Text {
                                             text: "\uf5a0"
                                             font.family: "Font Awesome 5 Pro Solid"
-                                            font.pixelSize: 9
-                                            color: successColor
+                                            font.pixelSize: 8
+                                            color: accentColor
                                         }
 
                                         Text {
                                             text: "Location"
                                             font.family: "Codec Pro"
-                                            font.pixelSize: 10
+                                            font.pixelSize: 9
                                             color: textPrimary
                                         }
                                     }
@@ -1322,7 +1376,7 @@ Item {
                                 Text {
                                     text: selectionMode ? "" : "\uf061"
                                     font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 11
                                     color: cardMa.containsMouse ? accentColor : borderColor
                                     opacity: cardMa.containsMouse ? 1 : 0.5
 
@@ -1342,14 +1396,18 @@ Item {
                 anchors.topMargin: 4
                 visible: viewMode === "list" && projectsList.length > 0
                 clip: true
-                spacing: 4
+                spacing: 2
+
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
                 
                 model: projectsList
                 
                 delegate: Rectangle {
                     width: projectsList_ListView.width
-                    height: 56
-                    radius: 8
+                    height: 48
+                    radius: 6
                     color: listItemMa.containsMouse ? cardHoverColor : 
                            isSelected(modelData.id) ? Qt.lighter(accentColor, 1.95) : cardColor
                     border.color: isSelected(modelData.id) ? accentColor : 
@@ -1376,14 +1434,14 @@ Item {
                     
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        spacing: 12
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 10
                         
                         // Checkbox
                         Rectangle {
-                            width: 20
-                            height: 20
+                            width: 18
+                            height: 18
                             radius: 4
                             color: isSelected(modelData.id) ? accentColor : "transparent"
                             border.color: isSelected(modelData.id) ? accentColor : borderColor
@@ -1394,7 +1452,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "\uf00c"
                                 font.family: "Font Awesome 5 Pro Solid"
-                                font.pixelSize: 10
+                                font.pixelSize: 9
                                 color: "white"
                                 visible: isSelected(modelData.id)
                             }
@@ -1402,16 +1460,16 @@ Item {
                         
                         // Icon
                         Rectangle {
-                            width: 36
-                            height: 36
-                            radius: 8
+                            width: 32
+                            height: 32
+                            radius: 6
                             color: Qt.lighter(getStatusColor(itemStatus), 1.85)
                             
                             Text {
                                 anchors.centerIn: parent
                                 text: "\uf07c"
                                 font.family: "Font Awesome 5 Pro Solid"
-                                font.pixelSize: 14
+                                font.pixelSize: 12
                                 color: getStatusColor(itemStatus)
                             }
                         }
@@ -1424,7 +1482,7 @@ Item {
                             Text {
                                 text: modelData.name
                                 font.family: "Codec Pro"
-                                font.pixelSize: 13
+                                font.pixelSize: 12
                                 font.weight: Font.Medium
                                 color: textPrimary
                                 elide: Text.ElideRight
@@ -1434,7 +1492,7 @@ Item {
                             Text {
                                 text: modelData.description || "No description"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 11
+                                font.pixelSize: 10
                                 color: textSecondary
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
@@ -1445,7 +1503,7 @@ Item {
                         Text {
                             text: pointCount + " pts"
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                             color: textSecondary
                             Layout.preferredWidth: 50
                         }
@@ -1453,8 +1511,8 @@ Item {
                         // Status
                         Rectangle {
                             width: listStatusText.width + 10
-                            height: 20
-                            radius: 10
+                            height: 18
+                            radius: 9
                             color: Qt.lighter(getStatusColor(itemStatus), 1.8)
                             
                             Text {
@@ -1462,7 +1520,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: itemStatus
                                 font.family: "Codec Pro"
-                                font.pixelSize: 9
+                                font.pixelSize: 8
                                 color: getStatusColor(itemStatus)
                             }
                         }
@@ -1471,7 +1529,7 @@ Item {
                         Text {
                             text: formatRelativeTime(modelData.lastAccessed || modelData.createdAt)
                             font.family: "Codec Pro"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
                             color: textSecondary
                             Layout.preferredWidth: 80
                             horizontalAlignment: Text.AlignRight
@@ -1479,8 +1537,8 @@ Item {
                         
                         // Delete button
                         Rectangle {
-                            width: 28
-                            height: 28
+                            width: 24
+                            height: 24
                             radius: 6
                             color: listDeleteMa.containsMouse ? Qt.lighter(dangerColor, 1.75) : "transparent"
                             visible: !selectionMode
@@ -1489,7 +1547,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "\uf1f8"
                                 font.family: "Font Awesome 5 Pro Solid"
-                                font.pixelSize: 11
+                                font.pixelSize: 10
                                 color: listDeleteMa.containsMouse ? dangerColor : textSecondary
                             }
                             
@@ -1542,8 +1600,8 @@ Item {
     Dialog {
         id: createProjectDialog
         anchors.centerIn: parent
-        width: Math.min(500, root.width - 48)
-        height: Math.min(520, root.height - 80)
+        width: Math.min(420, root.width - 40)
+        height: Math.min(480, root.height - 60)
         modal: true
         padding: 0
         dim: true
@@ -1564,15 +1622,15 @@ Item {
 
         background: Rectangle {
             color: cardColor
-            radius: 8
+            radius: 6
             border.color: borderColor
             border.width: 1
         }
 
         header: Rectangle {
             color: cardColor
-            height: 56
-            radius: 8
+            height: 48
+            radius: 6
 
             Rectangle {
                 anchors.bottom: parent.bottom
@@ -1583,46 +1641,46 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                spacing: 12
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 10
                 
                 // Icon
                 Rectangle {
-                    width: 36
-                    height: 36
-                    radius: 8
+                    width: 32
+                    height: 32
+                    radius: 6
                     color: Qt.lighter(accentColor, 1.9)
                     
                     Text {
                         anchors.centerIn: parent
                         text: "\uf07c"
                         font.family: "Font Awesome 5 Pro Solid"
-                        font.pixelSize: 14
+                        font.pixelSize: 12
                         color: accentColor
                     }
                 }
 
                 Text {
-                    text: "New Project"
+                    text: "Create Project"
                     font.family: "Codec Pro"
-                    font.pixelSize: 16
-                    font.weight: Font.Bold
+                    font.pixelSize: 13
+                    font.weight: Font.Medium
                     color: textPrimary
                     Layout.fillWidth: true
                 }
 
                 Rectangle {
-                    width: 32
-                    height: 32
-                    radius: 16
+                    width: 28
+                    height: 28
+                    radius: 14
                     color: closeDialogMa.containsMouse ? bgColor : "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: "\uf00d"
                         font.family: "Font Awesome 5 Pro Solid"
-                        font.pixelSize: 12
+                        font.pixelSize: 11
                         color: textSecondary
                     }
 
@@ -1651,22 +1709,21 @@ Item {
             ColumnLayout {
                 id: formColumn
                 width: parent.width
-                spacing: 16
+                spacing: 12
 
                 Item { height: 4 }
 
                 // Project Name Field
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 20
-                    Layout.rightMargin: 20
-                    spacing: 6
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    spacing: 4
 
                     Text {
-                        text: "Project Name <font color=\"" + dangerColor + "\">*</font>"
-                        textFormat: Text.RichText
+                        text: "Name"
                         font.family: "Codec Pro"
-                        font.pixelSize: 12
+                        font.pixelSize: 10
                         font.weight: Font.Medium
                         color: textPrimary
                     }
@@ -1674,18 +1731,18 @@ Item {
                     TextField {
                         id: projectNameField
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-                        placeholderText: "Enter project name"
+                        Layout.preferredHeight: 34
+                        placeholderText: "e.g., Bridge Survey"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: textPrimary
                         placeholderTextColor: textSecondary
-                        leftPadding: 12
-                        rightPadding: 12
+                        leftPadding: 10
+                        rightPadding: 10
                         selectByMouse: true
 
                         background: Rectangle {
-                            color: "#ffffff"
+                            color: bgColor
                             radius: 6
                             border.color: {
                                 if (formSubmitted && projectNameField.text.length === 0) return dangerColor
@@ -1698,9 +1755,9 @@ Item {
                     
                     Text {
                         visible: formSubmitted && projectNameField.text.length === 0
-                        text: "\uf071 Project name is required"
-                        font.family: "Font Awesome 5 Pro Solid"
-                        font.pixelSize: 11
+                        text: "Name is required"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 9
                         color: dangerColor
                     }
                 }
@@ -1708,15 +1765,14 @@ Item {
                 // Description Field
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 20
-                    Layout.rightMargin: 20
-                    spacing: 6
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    spacing: 4
 
                     Text {
-                        text: "Description <font color=\"" + dangerColor + "\">*</font>"
-                        textFormat: Text.RichText
+                        text: "Description"
                         font.family: "Codec Pro"
-                        font.pixelSize: 12
+                        font.pixelSize: 10
                         font.weight: Font.Medium
                         color: textPrimary
                     }
@@ -1724,18 +1780,18 @@ Item {
                     TextField {
                         id: projectDescField
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-                        placeholderText: "Brief project description"
+                        Layout.preferredHeight: 34
+                        placeholderText: "Project details"
                         font.family: "Codec Pro"
-                        font.pixelSize: 13
+                        font.pixelSize: 11
                         color: textPrimary
                         placeholderTextColor: textSecondary
-                        leftPadding: 12
-                        rightPadding: 12
+                        leftPadding: 10
+                        rightPadding: 10
                         selectByMouse: true
 
                         background: Rectangle {
-                            color: "#ffffff"
+                            color: bgColor
                             radius: 6
                             border.color: {
                                 if (formSubmitted && projectDescField.text.length === 0) return dangerColor
@@ -1748,9 +1804,9 @@ Item {
                     
                     Text {
                         visible: formSubmitted && projectDescField.text.length === 0
-                        text: "\uf071 Description is required"
-                        font.family: "Font Awesome 5 Pro Solid"
-                        font.pixelSize: 11
+                        text: "Description is required"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 9
                         color: dangerColor
                     }
                 }
@@ -1758,19 +1814,18 @@ Item {
                 // Location section with Map Picker
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.leftMargin: 20
-                    Layout.rightMargin: 20
-                    spacing: 6
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    spacing: 4
 
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
 
                         Text {
-                            text: "Project Location <font color=\"" + dangerColor + "\">*</font>"
-                            textFormat: Text.RichText
+                            text: "Location"
                             font.family: "Codec Pro"
-                            font.pixelSize: 12
+                            font.pixelSize: 10
                             font.weight: Font.Medium
                             color: textPrimary
                         }
@@ -1779,8 +1834,8 @@ Item {
 
                         Rectangle {
                             width: crsLabel.width + 12
-                            height: 20
-                            radius: 10
+                            height: 18
+                            radius: 9
                             color: Qt.lighter(accentColor, 1.9)
 
                             Text {
@@ -1788,7 +1843,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: "Lo29"
                                 font.family: "Codec Pro"
-                                font.pixelSize: 9
+                                font.pixelSize: 8
                                 font.weight: Font.Medium
                                 color: accentColor
                             }
@@ -1798,7 +1853,7 @@ Item {
                     MapPicker {
                         id: mapPicker
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 200
+                        Layout.preferredHeight: 140
                         accentColor: root.accentColor
                         textPrimary: root.textPrimary
                         textSecondary: root.textSecondary
@@ -1807,9 +1862,9 @@ Item {
                     
                     Text {
                         visible: formSubmitted && !mapPicker.locationPicked
-                        text: "\uf071 Please select a location on the map"
-                        font.family: "Font Awesome 5 Pro Solid"
-                        font.pixelSize: 11
+                        text: "Location required"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 9
                         color: dangerColor
                     }
                 }
@@ -1820,13 +1875,13 @@ Item {
 
         footer: Item {
             width: parent.width
-            height: 64
+            height: 56
             z: 100
             
             Rectangle {
                 anchors.fill: parent
                 color: bgColor
-                radius: 8
+                radius: 6
                 
                 // Top border line
                 Rectangle {
@@ -1838,19 +1893,19 @@ Item {
                 
                 RowLayout {
                     anchors.centerIn: parent
-                    spacing: 12
+                    spacing: 10
                     
                     // Cancel button
                     Button {
                         id: cancelBtn
                         text: "Cancel"
-                        Layout.preferredHeight: 38
+                        Layout.preferredHeight: 34
                         Layout.preferredWidth: implicitWidth + 20
                         
                         contentItem: Text {
                             text: cancelBtn.text
                             font.family: "Codec Pro"
-                            font.pixelSize: 13
+                            font.pixelSize: 11
                             color: textSecondary
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -1870,7 +1925,7 @@ Item {
                     Button {
                         id: createBtn
                         text: "Create Project"
-                        Layout.preferredHeight: 38
+                        Layout.preferredHeight: 34
                         Layout.preferredWidth: implicitWidth + 20
                         
                         property bool canCreate: projectNameField.text.length > 0 &&
@@ -1880,7 +1935,7 @@ Item {
                         contentItem: Text {
                             text: createBtn.text
                             font.family: "Codec Pro"
-                            font.pixelSize: 13
+                            font.pixelSize: 11
                             font.weight: Font.Medium
                             color: "white"
                             horizontalAlignment: Text.AlignHCenter
@@ -1921,10 +1976,10 @@ Item {
     }
 
     // Delete Confirmation Dialog
-    Dialog {
-        id: deleteConfirmDialog
-        anchors.centerIn: parent
-        width: 380
+        Dialog {
+            id: deleteConfirmDialog
+            anchors.centerIn: parent
+            width: 340
         modal: true
         padding: 0
         dim: true
@@ -1936,48 +1991,48 @@ Item {
 
         background: Rectangle {
             color: cardColor
-            radius: 4
+            radius: 6
             border.color: borderColor
             border.width: 1
         }
 
         contentItem: ColumnLayout {
-            spacing: 16
+            spacing: 12
 
             Item { height: 8 }
 
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
-                width: 64
-                height: 64
-                radius: 32
+                width: 52
+                height: 52
+                radius: 26
                 color: Qt.lighter(dangerColor, 1.85)
 
                 Text {
                     anchors.centerIn: parent
                     text: "\uf1f8"
                     font.family: "Font Awesome 5 Pro Solid"
-                    font.pixelSize: 24
+                    font.pixelSize: 18
                     color: dangerColor
                 }
             }
 
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                text: "Delete Project?"
+                text: "Delete project?"
                 font.family: "Codec Pro"
-                font.pixelSize: 18
+                font.pixelSize: 14
                 font.weight: Font.Medium
                 color: textPrimary
             }
 
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                Layout.leftMargin: 24
-                Layout.rightMargin: 24
-                text: "Are you sure you want to delete \"" + deleteProjectName + "\"? This action cannot be undone."
+                Layout.leftMargin: 16
+                Layout.rightMargin: 16
+                text: "Delete \"" + deleteProjectName + "\"? This action cannot be undone."
                 font.family: "Codec Pro"
-                font.pixelSize: 14
+                font.pixelSize: 11
                 color: textSecondary
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
@@ -1989,8 +2044,8 @@ Item {
 
         footer: Rectangle {
             color: bgColor
-            height: 64
-            radius: 4
+            height: 56
+            radius: 6
 
             Rectangle {
                 anchors.top: parent.top
@@ -2001,14 +2056,14 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                spacing: 12
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 10
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 40
-                    radius: 4
+                    height: 34
+                    radius: 6
                     color: delCancelMa.containsMouse ? Qt.darker(cardColor, 1.03) : cardColor
                     border.color: borderColor
                     border.width: 1
@@ -2017,7 +2072,7 @@ Item {
                         anchors.centerIn: parent
                         text: "Cancel"
                         font.family: "Codec Pro"
-                        font.pixelSize: 14
+                        font.pixelSize: 11
                         color: textPrimary
                     }
 
@@ -2032,17 +2087,17 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 40
-                    radius: 4
+                    height: 34
+                    radius: 6
                     color: delConfirmMa.containsMouse ? Qt.darker(dangerColor, 1.1) : dangerColor
 
                     Behavior on color { ColorAnimation { duration: 150 } }
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Delete Project"
+                        text: "Delete"
                         font.family: "Codec Pro"
-                        font.pixelSize: 14
+                        font.pixelSize: 11
                         color: "white"
                     }
 
@@ -2063,10 +2118,10 @@ Item {
     }
     
     // Bulk Delete Confirmation Dialog
-    Dialog {
-        id: bulkDeleteDialog
-        anchors.centerIn: parent
-        width: 400
+        Dialog {
+            id: bulkDeleteDialog
+            anchors.centerIn: parent
+            width: 360
         modal: true
         padding: 0
         dim: true
@@ -2077,48 +2132,48 @@ Item {
 
         background: Rectangle {
             color: cardColor
-            radius: 4
+            radius: 6
             border.color: borderColor
             border.width: 1
         }
 
         contentItem: ColumnLayout {
-            spacing: 16
+            spacing: 12
 
             Item { height: 8 }
 
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
-                width: 64
-                height: 64
-                radius: 32
+                width: 52
+                height: 52
+                radius: 26
                 color: Qt.lighter(dangerColor, 1.85)
 
                 Text {
                     anchors.centerIn: parent
                     text: "\uf071"
                     font.family: "Font Awesome 5 Pro Solid"
-                    font.pixelSize: 24
+                    font.pixelSize: 18
                     color: dangerColor
                 }
             }
 
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                text: "Delete " + selectedProjects.length + " Projects?"
+                text: "Delete " + selectedProjects.length + " projects?"
                 font.family: "Codec Pro"
-                font.pixelSize: 18
+                font.pixelSize: 14
                 font.weight: Font.Medium
                 color: textPrimary
             }
 
             Text {
                 Layout.alignment: Qt.AlignHCenter
-                Layout.leftMargin: 24
-                Layout.rightMargin: 24
-                text: "Are you sure you want to delete " + selectedProjects.length + " selected projects? This action cannot be undone."
+                Layout.leftMargin: 16
+                Layout.rightMargin: 16
+                text: "Delete " + selectedProjects.length + " selected projects? This action cannot be undone."
                 font.family: "Codec Pro"
-                font.pixelSize: 14
+                font.pixelSize: 11
                 color: textSecondary
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
@@ -2130,8 +2185,8 @@ Item {
 
         footer: Rectangle {
             color: bgColor
-            height: 64
-            radius: 4
+            height: 56
+            radius: 6
 
             Rectangle {
                 anchors.top: parent.top
@@ -2142,14 +2197,14 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 20
-                anchors.rightMargin: 20
-                spacing: 12
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 10
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 40
-                    radius: 4
+                    height: 34
+                    radius: 6
                     color: bulkCancelMa.containsMouse ? Qt.darker(cardColor, 1.03) : cardColor
                     border.color: borderColor
                     border.width: 1
@@ -2158,7 +2213,7 @@ Item {
                         anchors.centerIn: parent
                         text: "Cancel"
                         font.family: "Codec Pro"
-                        font.pixelSize: 14
+                        font.pixelSize: 11
                         color: textPrimary
                     }
 
@@ -2173,17 +2228,17 @@ Item {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 40
-                    radius: 4
+                    height: 34
+                    radius: 6
                     color: bulkConfirmMa.containsMouse ? Qt.darker(dangerColor, 1.1) : dangerColor
 
                     Behavior on color { ColorAnimation { duration: 150 } }
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Delete " + selectedProjects.length + " Projects"
+                        text: "Delete"
                         font.family: "Codec Pro"
-                        font.pixelSize: 14
+                        font.pixelSize: 11
                         color: "white"
                     }
 

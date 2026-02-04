@@ -494,7 +494,7 @@ Item {
                     font.pixelSize: 10
                     font.weight: Font.Bold
                     color: textSecondary
-                    letterSpacing: 1
+                    font.letterSpacing: 1
                 }
 
                 ColumnLayout {
