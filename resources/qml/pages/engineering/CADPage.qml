@@ -100,8 +100,27 @@ Window {
     // Status Bar Properties
     property real cursorX: 0
     property real cursorY: 0
-    property var toolNames: ["Select", "Pan", "Zoom", "Zoom Out"]
-    property string currentToolName: toolNames[selectedTool] || "Unknown"
+
+    function toolNameForId(id) {
+        switch (id) {
+        case 0: return "Select"
+        case 1: return "Pan"
+        case 2: return "Zoom In"
+        case 20: return "Zoom Out"
+        case 21: return "Zoom Origin"
+        case 22: return "Zoom Extents"
+        case 23: return "Point Manager"
+        case 3: return "Line"
+        case 4: return "Circle"
+        case 5: return "Rectangle"
+        case 10: return "Measure Distance"
+        case 11: return "Measure Area"
+        case 30: return "Add Point"
+        default: return "Unknown"
+        }
+    }
+
+    property string currentToolName: toolNameForId(selectedTool)
 
     // Layers System
     property int activeLayer: 0
@@ -157,7 +176,10 @@ Window {
 
     Connections {
         target: Database
-        function onPointsChanged() { loadPointsFromDB() }
+        function onPointsChanged() {
+            if (root.isBulkImporting) return
+            loadPointsFromDB()
+        }
     }
 
     // Earthwork error and progress handling
@@ -187,22 +209,60 @@ Window {
         }
     }
 
-    // Loading state (Window doesnt support states property)
+    // Loading state
     property bool isLoading: true
+    property string loadingMessage: "Loading CAD Environment..."
+    property real loadingProgress: 0.0
+    property int loadingStep: 0
+
     property bool pickingControlPoint: false
 
-    // ... (Timer) ...
+    function startCadLoading() {
+        isLoading = true
+        loadingMessage = "Loading CAD Environment..."
+        loadingProgress = 0.0
+        loadingStep = 0
+        loadingSequenceTimer.restart()
+    }
 
     CADOptionsDialog {
         id: optionsDialog
         cadPage: root
     }
 
-
-    // Timer to switch from loading to ready
+    // Staged loading: keeps splash responsive and can be extended later
     Timer {
-        id: loadingTimer
-        interval: 1500
+        id: loadingSequenceTimer
+        interval: 1
+        running: false
+        repeat: false
+        onTriggered: {
+            if (loadingStep === 0) {
+                loadingMessage = "Loading points..."
+                loadingProgress = 0.35
+                loadPointsFromDB()
+                loadingStep = 1
+                loadingSequenceTimer.restart()
+                return
+            }
+
+            if (loadingStep === 1) {
+                loadingMessage = "Preparing workspace..."
+                loadingProgress = 0.75
+                loadingStep = 2
+                loadingSequenceTimer.restart()
+                return
+            }
+
+            loadingMessage = "Ready"
+            loadingProgress = 1.0
+            finishLoadingTimer.restart()
+        }
+    }
+
+    Timer {
+        id: finishLoadingTimer
+        interval: 250
         running: false
         repeat: false
         onTriggered: isLoading = false
@@ -210,16 +270,15 @@ Window {
 
     // Start loading when window becomes visible
     onVisibleChanged: {
-        if (visible && isLoading) {
-            loadingTimer.restart()
+        if (visible) {
+            startCadLoading()
         }
     }
 
     Component.onCompleted: {
         if (visible) {
-            loadingTimer.start()
+            startCadLoading()
         }
-        loadPointsFromDB() // Initial load
     }
 
     // ============ FILE DIALOG & CSV IMPORT ============
@@ -231,6 +290,57 @@ Window {
 
         onAccepted: {
             parseCSVFromFile(file.toString())
+        }
+    }
+
+    Platform.FileDialog {
+        id: exportCsvDialog
+        title: "Export CSV File"
+        nameFilters: ["CSV files (*.csv)", "All files (*)"]
+        fileMode: Platform.FileDialog.SaveFile
+
+        onAccepted: {
+            var filePath = file.toString().replace("file://", "")
+            var ok = Database.exportToCSV(filePath)
+            if (ok) {
+                exportResultDialog.message = "✓ Exported " + importedPoints.count + " points to:\n" + filePath
+            } else {
+                exportResultDialog.message = "Export failed."
+            }
+            exportResultDialog.open()
+        }
+    }
+
+    Dialog {
+        id: exportResultDialog
+        title: "CSV Export"
+        modal: true
+        standardButtons: Dialog.Ok
+
+        property string message: ""
+
+        background: Rectangle {
+            color: darkCardBg
+            border.color: accentColor
+            border.width: 2
+            radius: 4
+        }
+
+        contentItem: Rectangle {
+            color: "transparent"
+            implicitWidth: 420
+            implicitHeight: exportResultText.implicitHeight + 24
+
+            Text {
+                id: exportResultText
+                anchors.fill: parent
+                anchors.margins: 12
+                text: exportResultDialog.message
+                wrapMode: Text.WordWrap
+                font.family: "Codec Pro"
+                font.pixelSize: 11
+                color: textPrimary
+            }
         }
     }
 
@@ -721,7 +831,7 @@ Window {
                 } else if (s.type === "rectangle") {
                     minX = Math.min(minX, s.x, s.x + s.w); maxX = Math.max(maxX, s.x, s.x + s.w)
                     minY = Math.min(minY, s.y, s.y + s.h); maxY = Math.max(maxY, s.y, s.y + s.h)
-                } else if (s.type === "measure_poly" && s.points) {
+                } else if ((s.type === "measure_poly" || s.type === "polygon") && s.points) {
                     for (var p=0; p<s.points.length; p++) {
                         minX = Math.min(minX, s.points[p].x); maxX = Math.max(maxX, s.points[p].x)
                         minY = Math.min(minY, s.points[p].y); maxY = Math.max(maxY, s.points[p].y)
@@ -842,6 +952,28 @@ Window {
         return d + "° " + m + "' " + s + '"';
     }
 
+    // Surveying quadrantal bearing string (e.g., "N 12° 34' 56\" E")
+    function formatQuadrantBearing(azimuthDeg) {
+        var az = azimuthDeg % 360
+        if (az < 0) az += 360
+
+        var ns = "N"
+        var ew = "E"
+        var angle = 0
+
+        if (az >= 0 && az <= 90) {
+            ns = "N"; ew = "E"; angle = az
+        } else if (az > 90 && az <= 180) {
+            ns = "S"; ew = "E"; angle = 180 - az
+        } else if (az > 180 && az <= 270) {
+            ns = "S"; ew = "W"; angle = az - 180
+        } else {
+            ns = "N"; ew = "W"; angle = 360 - az
+        }
+
+        return ns + " " + formatDMS(angle) + " " + ew
+    }
+
     function calculatePolygonArea(points) {
         var area = 0.0
         if (points.length < 3) return 0.0
@@ -874,7 +1006,7 @@ Window {
 
                 if (!isNaN(x) && !isNaN(y)) {
                     // Save to Database
-                    Database.addPoint(name, y, x, z, "CSV", "Imported")
+                    Database.addPoint(name, x, y, z, "CSV", "Imported")
                     pointCount++
                 }
             }
@@ -925,12 +1057,34 @@ Window {
 
             // Loading text
             Text {
-                text: "Loading CAD Environment..."
+                text: loadingMessage
                 font.family: "Codec Pro"
                 font.pixelSize: 14
                 font.weight: Font.Medium
                 color: "#FFFFFF"
                 Layout.alignment: Qt.AlignHCenter
+            }
+
+            // Progress
+            ProgressBar {
+                Layout.preferredWidth: 260
+                from: 0
+                to: 1
+                value: loadingProgress
+
+                background: Rectangle {
+                    implicitHeight: 6
+                    radius: 3
+                    color: "#2A2A2A"
+                    border.color: "#3A3A3A"
+                }
+
+                contentItem: Rectangle {
+                    implicitHeight: 6
+                    radius: 3
+                    color: accentColor
+                    width: parent.width * Math.max(0, Math.min(1, loadingProgress))
+                }
             }
 
             // Animated spinner
@@ -1025,7 +1179,8 @@ Window {
                             }
                             MenuItem {
                                 text: "Export CSV"
-                                enabled: false
+                                enabled: importedPoints.count > 0
+                                onTriggered: exportCsvDialog.open()
                             }
                             MenuItem {
                                 text: "Save"
@@ -1450,8 +1605,11 @@ Window {
             pointsCanvas.requestPaint()
         }
         onDeleteRequested: (index) => {
-            importedPoints.remove(index)
-            pointsCanvas.requestPaint()
+            if (index < 0 || index >= importedPoints.count) return
+            var pt = importedPoints.get(index)
+            if (pt && pt.id !== undefined) {
+                Database.deletePoint(pt.id)
+            }
         }
     }
 
@@ -2133,6 +2291,7 @@ Window {
                                         var shape = drawnShapes[k]
                                         ctx.strokeStyle = shape.color || "white"
                                         ctx.beginPath()
+                                        var skipFinalStroke = false
 
                                         if (shape.type === "line") {
                                             var p1 = worldToScreen(shape.x1, shape.y1)
@@ -2150,6 +2309,21 @@ Window {
                                             var sw = shape.w * fitScale * canvasScale
                                             var sh = -shape.h * fitScale * canvasScale // Y inverted
                                             ctx.rect(pStart.x, pStart.y, sw, sh)
+                                        } else if (shape.type === "polygon" && shape.points) {
+                                            var pts = shape.points
+                                            if (pts.length > 0) {
+                                                var p0 = worldToScreen(pts[0].x, pts[0].y)
+                                                ctx.moveTo(p0.x, p0.y)
+                                                for (var pp = 1; pp < pts.length; pp++) {
+                                                    var pN = worldToScreen(pts[pp].x, pts[pp].y)
+                                                    ctx.lineTo(pN.x, pN.y)
+                                                }
+                                                ctx.closePath()
+                                                ctx.save()
+                                                ctx.fillStyle = shape.fillColor || "rgba(255,87,34,0.12)"
+                                                ctx.fill()
+                                                ctx.restore()
+                                            }
                                         } else if (shape.type === "measure_line") {
                                             // Render Measure Distance Line
                                             var p1 = worldToScreen(shape.x1, shape.y1)
@@ -2167,7 +2341,7 @@ Window {
                                             var midY = (p1.y + p2.y) / 2
                                             var bearing = calculateBearing(shape.x1, shape.y1, shape.x2, shape.y2)
 
-                                            var label = shape.distance.toFixed(3) + "m  " + formatDMS(bearing)
+                                            var label = shape.distance.toFixed(3) + "m  " + formatQuadrantBearing(bearing)
                                             ctx.fillStyle = "#00CED1"
                                             ctx.font = "bold 11px sans-serif"
                                             var dim = ctx.measureText(label)
@@ -2177,6 +2351,8 @@ Window {
                                             // Text
                                             ctx.fillStyle = "#00CED1"
                                             ctx.fillText(label, midX - dim.width/2, midY - 2)
+
+                                            skipFinalStroke = true
 
                                         } else if (shape.type === "measure_poly") {
                                             // Render Measure Area Polygon
@@ -2215,8 +2391,10 @@ Window {
                                                 ctx.fillText(areaLabel, cx - adim.width/2, cy - 2)
                                             }
                                             ctx.restore()
+                                            skipFinalStroke = true
                                         }
-                                        ctx.stroke()
+
+                                        if (!skipFinalStroke) ctx.stroke()
                                     }
                                 }
 
@@ -3076,11 +3254,10 @@ Window {
                                                             hoverEnabled: true
                                                             cursorShape: Qt.PointingHandCursor
                                                             onClicked: {
-                                                                if (selectedPoints.length === 1) {
-                                                                    importedPoints.remove(selectedPoints[0])
+                                                                if (selectedPoints.length === 1 && point && point.id !== undefined) {
+                                                                    Database.deletePoint(point.id)
                                                                     selectedPoints = []
                                                                     selectedPointIndex = -1
-                                                                    pointsCanvas.requestPaint()
                                                                 }
                                                             }
                                                         }
@@ -3108,11 +3285,37 @@ Window {
                                                             onClicked: {
                                                                 if (selectedPoints.length === 1 && point) {
                                                                     // Center on point
-                                                                    var centerX = pointsCanvas.width / 2
-                                                                    var centerY = pointsCanvas.height / 2
-                                                                    canvasOffsetX = centerX - point.x * canvasScale
-                                                                    canvasOffsetY = centerY + point.y * canvasScale
+                                                                    var totalScale = fitScale * canvasScale
+                                                                    canvasOffsetX = (pointsCanvas.width / 2) - fitOffsetX - point.x * totalScale
+                                                                    canvasOffsetY = (pointsCanvas.height / 2) - fitOffsetY + point.y * totalScale
                                                                     pointsCanvas.requestPaint()
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+
+                                                    Rectangle {
+                                                        width: 70
+                                                        height: 22
+                                                        color: cogoPtMa.containsMouse ? accentColor : "#3A3A3A"
+                                                        radius: 3
+
+                                                        Text {
+                                                            anchors.centerIn: parent
+                                                            text: "COGO"
+                                                            font.family: "Codec Pro"
+                                                            font.pixelSize: 8
+                                                            color: "white"
+                                                        }
+
+                                                        MouseArea {
+                                                            id: cogoPtMa
+                                                            anchors.fill: parent
+                                                            hoverEnabled: true
+                                                            cursorShape: Qt.PointingHandCursor
+                                                            onClicked: {
+                                                                if (selectedPoints.length === 1 && point) {
+                                                                    cogoDialog.openForPoint(point)
                                                                 }
                                                             }
                                                         }
@@ -3121,9 +3324,75 @@ Window {
                                             }
                                         }
 
+                                        // Two-point inverse (survey)
+                                        Loader {
+                                            active: selectedPoints.length === 2 && selectedPoints[0] < importedPoints.count && selectedPoints[1] < importedPoints.count
+                                            sourceComponent: Column {
+                                                spacing: 6
+                                                width: parent.width
+
+                                                property var p1: importedPoints.get(selectedPoints[0])
+                                                property var p2: importedPoints.get(selectedPoints[1])
+
+                                                property real dx: (p2 ? p2.x : 0) - (p1 ? p1.x : 0)
+                                                property real dy: (p2 ? p2.y : 0) - (p1 ? p1.y : 0)
+                                                property real dz: ((p2 && p2.z !== undefined) ? p2.z : 0) - ((p1 && p1.z !== undefined) ? p1.z : 0)
+                                                property real horizDist: Math.sqrt(dx * dx + dy * dy)
+                                                property real slopeDist: Math.sqrt(dx * dx + dy * dy + dz * dz)
+                                                property real az: (p1 && p2) ? calculateBearing(p1.x, p1.y, p2.x, p2.y) : 0
+
+                                                Rectangle { width: parent.width; height: 1; color: "#3A3A3A" }
+
+                                                Text {
+                                                    text: "Inverse (2 points)"
+                                                    font.family: "Codec Pro"
+                                                    font.pixelSize: 8
+                                                    color: textSecondary
+                                                }
+
+                                                Row {
+                                                    spacing: 6
+                                                    Text { text: "Bearing:"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary; width: 55 }
+                                                    Text { text: formatQuadrantBearing(az); font.family: "Codec Pro"; font.pixelSize: 9; color: accentColor; font.weight: Font.Medium }
+                                                }
+
+                                                Row {
+                                                    spacing: 6
+                                                    Text { text: "Dist:"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary; width: 55 }
+                                                    Text { text: horizDist.toFixed(3) + " m"; font.family: "Codec Pro"; font.pixelSize: 9; color: textPrimary; font.weight: Font.Medium }
+                                                }
+
+                                                Row {
+                                                    spacing: 6
+                                                    Text { text: "ΔX:"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary; width: 55 }
+                                                    Text { text: dx.toFixed(3); font.family: "Codec Pro"; font.pixelSize: 9; color: textPrimary }
+                                                }
+
+                                                Row {
+                                                    spacing: 6
+                                                    Text { text: "ΔY:"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary; width: 55 }
+                                                    Text { text: dy.toFixed(3); font.family: "Codec Pro"; font.pixelSize: 9; color: textPrimary }
+                                                }
+
+                                                Row {
+                                                    spacing: 6
+                                                    visible: Math.abs(dz) > 0.0005
+                                                    Text { text: "ΔZ:"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary; width: 55 }
+                                                    Text { text: dz.toFixed(3); font.family: "Codec Pro"; font.pixelSize: 9; color: "#2ECC71" }
+                                                }
+
+                                                Row {
+                                                    spacing: 6
+                                                    visible: Math.abs(dz) > 0.0005
+                                                    Text { text: "Slope:"; font.family: "Codec Pro"; font.pixelSize: 9; color: textSecondary; width: 55 }
+                                                    Text { text: slopeDist.toFixed(3) + " m"; font.family: "Codec Pro"; font.pixelSize: 9; color: textPrimary }
+                                                }
+                                            }
+                                        }
+
                                         // Multi-selection info
                                         Text {
-                                            visible: selectedPoints.length > 1
+                                            visible: selectedPoints.length > 2
                                             text: "Multiple points selected\nGroup operations available"
                                             font.family: "Codec Pro"
                                             font.pixelSize: 9
@@ -3399,26 +3668,46 @@ Window {
         }
 
         onAccepted: {
-            var pointsToBuffer = [];
-            if (drawnShapes.length > 0) {
-                pointsToBuffer = drawnShapes[drawnShapes.length - 1].points;
+            // Find a polygon-like input: prefer the most recent shape with a points[] array, otherwise boundaryPolygon
+            var pointsToBuffer = []
+            if (drawnShapes && drawnShapes.length > 0) {
+                for (var i = drawnShapes.length - 1; i >= 0; i--) {
+                    if (drawnShapes[i].points && drawnShapes[i].points.length >= 3) {
+                        pointsToBuffer = drawnShapes[i].points
+                        break
+                    }
+                }
             }
 
-            if (pointsToBuffer.length > 2) {
-                var dist = parseFloat(bufferDistanceField.text);
-                var bufferedPoints = earthworkEngine.createBuffer(pointsToBuffer, dist);
+            if ((!pointsToBuffer || pointsToBuffer.length < 3) && boundaryPolygon && boundaryPolygon.length >= 3) {
+                pointsToBuffer = boundaryPolygon
+            }
 
-                if (bufferedPoints.length > 0) {
-                    var newShape = {
-                        type: "polygon",
-                        points: bufferedPoints,
-                        color: "#FF5722", // Orange for buffer
-                        layer: "Buffer"
-                    };
-                    drawnShapes.push(newShape);
-                    // Force redraw - simple hack to trigger binding if needed, or rely on canvas paint
-                    canvas.requestPaint();
+            if (!pointsToBuffer || pointsToBuffer.length < 3) {
+                console.log("Buffer: no polygon to buffer")
+                return
+            }
+
+            var dist = parseFloat(bufferDistanceField.text)
+            if (isNaN(dist)) dist = 0
+
+            // Earthwork.createBuffer expects a list of QPointF/Qt.point
+            var qpoints = []
+            for (var p = 0; p < pointsToBuffer.length; p++) {
+                var pt = pointsToBuffer[p]
+                if (pt && pt.x !== undefined && pt.y !== undefined) {
+                    qpoints.push(Qt.point(pt.x, pt.y))
                 }
+            }
+
+            var bufferedPoints = Earthwork.createBuffer(qpoints, dist)
+            if (bufferedPoints && bufferedPoints.length > 0) {
+                drawnShapes.push({
+                    type: "polygon",
+                    points: bufferedPoints,
+                    color: "#FF5722"
+                })
+                pointsCanvas.requestPaint()
             }
         }
     }
@@ -3899,6 +4188,310 @@ Window {
             Item { Layout.fillHeight: true } // Spacer
         }
     }
+    Dialog {
+        id: cogoDialog
+        title: "COGO - Bearing/Distance"
+        modal: true
+        width: 420
+        height: 520
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+
+        property var basePoint: null
+        property real baseX: 0
+        property real baseY: 0
+        property real baseZ: 0
+
+        property real outX: 0
+        property real outY: 0
+        property real outZ: 0
+
+        property string errorText: ""
+
+        function openForPoint(pt) {
+            basePoint = pt
+            baseX = pt && pt.x !== undefined ? pt.x : 0
+            baseY = pt && pt.y !== undefined ? pt.y : 0
+            baseZ = pt && pt.z !== undefined ? pt.z : 0
+
+            newPointNameField.text = ""
+            newPointCodeField.text = ""
+            newPointDescField.text = ""
+
+            quadrantCombo.currentIndex = 0
+            degField.text = "0"
+            minField.text = "0"
+            secField.text = "0"
+
+            distField.text = "0"
+            dzField.text = "0"
+            drawLineCheck.checked = true
+
+            errorText = ""
+            updateComputed()
+            open()
+        }
+
+        function safeFloat(text, fallback) {
+            var v = parseFloat(text)
+            return isNaN(v) ? fallback : v
+        }
+
+        function safeInt(text, fallback) {
+            var v = parseInt(text)
+            return isNaN(v) ? fallback : v
+        }
+
+        function updateComputed() {
+            var deg = safeInt(degField.text, 0)
+            var min = safeInt(minField.text, 0)
+            var sec = safeFloat(secField.text, 0)
+            var angle = deg + (min / 60.0) + (sec / 3600.0)
+            var dist = safeFloat(distField.text, 0)
+            var dz = safeFloat(dzField.text, 0)
+
+            if (angle < 0) angle = 0
+            if (angle > 90) angle = 90
+
+            var quad = quadrantCombo.currentText
+            var az = angle
+            if (quad === "SE") az = 180 - angle
+            else if (quad === "SW") az = 180 + angle
+            else if (quad === "NW") az = 360 - angle
+
+            var rad = az * Math.PI / 180.0
+            var dx = dist * Math.sin(rad)
+            var dy = dist * Math.cos(rad)
+
+            outX = baseX + dx
+            outY = baseY + dy
+            outZ = baseZ + dz
+
+            bearingPreview.text = formatQuadrantBearing(az)
+        }
+
+        background: Rectangle {
+            color: darkCardBg
+            border.color: accentColor
+            border.width: 2
+            radius: 4
+        }
+
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 12
+
+            Text {
+                text: cogoDialog.basePoint && cogoDialog.basePoint.name ? ("From: " + cogoDialog.basePoint.name) : "From: (selected point)"
+                font.family: "Codec Pro"
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                color: textPrimary
+            }
+
+            Text {
+                text: "X: " + cogoDialog.baseX.toFixed(3) + "   Y: " + cogoDialog.baseY.toFixed(3) + "   Z: " + cogoDialog.baseZ.toFixed(3)
+                font.family: "Codec Pro"
+                font.pixelSize: 10
+                color: textSecondary
+            }
+
+            Rectangle { Layout.fillWidth: true; height: 1; color: "#3A3A3A" }
+
+            GridLayout {
+                Layout.fillWidth: true
+                columns: 2
+                columnSpacing: 10
+                rowSpacing: 10
+
+                Text { text: "New Name"; color: textSecondary; font.family: "Codec Pro"; font.pixelSize: 10 }
+                TextField {
+                    id: newPointNameField
+                    Layout.fillWidth: true
+                    placeholderText: "e.g. PT101"
+                    onTextChanged: cogoDialog.errorText = ""
+                }
+
+                Text { text: "Code"; color: textSecondary; font.family: "Codec Pro"; font.pixelSize: 10 }
+                TextField {
+                    id: newPointCodeField
+                    Layout.fillWidth: true
+                    placeholderText: "Optional"
+                }
+
+                Text { text: "Description"; color: textSecondary; font.family: "Codec Pro"; font.pixelSize: 10 }
+                TextField {
+                    id: newPointDescField
+                    Layout.fillWidth: true
+                    placeholderText: "Optional"
+                }
+
+                Text { text: "Bearing"; color: textSecondary; font.family: "Codec Pro"; font.pixelSize: 10 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    ComboBox {
+                        id: quadrantCombo
+                        model: ["NE", "SE", "SW", "NW"]
+                        currentIndex: 0
+                        onCurrentIndexChanged: updateComputed()
+                        Layout.preferredWidth: 70
+                    }
+
+                    TextField {
+                        id: degField
+                        text: "0"
+                        validator: IntValidator { bottom: 0; top: 90 }
+                        Layout.preferredWidth: 50
+                        onTextChanged: updateComputed()
+                    }
+                    Text { text: "°"; color: textSecondary; font.family: "Codec Pro"; font.pixelSize: 10 }
+
+                    TextField {
+                        id: minField
+                        text: "0"
+                        validator: IntValidator { bottom: 0; top: 59 }
+                        Layout.preferredWidth: 45
+                        onTextChanged: updateComputed()
+                    }
+                    Text { text: "'"; color: textSecondary; font.family: "Codec Pro"; font.pixelSize: 10 }
+
+                    TextField {
+                        id: secField
+                        text: "0"
+                        validator: DoubleValidator { bottom: 0; top: 59.999; decimals: 3 }
+                        Layout.preferredWidth: 55
+                        onTextChanged: updateComputed()
+                    }
+                    Text { text: "\""; color: textSecondary; font.family: "Codec Pro"; font.pixelSize: 10 }
+                }
+
+                Text { text: "Distance (m)"; color: textSecondary; font.family: "Codec Pro"; font.pixelSize: 10 }
+                TextField {
+                    id: distField
+                    text: "0"
+                    validator: DoubleValidator { bottom: 0; top: 10000000; decimals: 3 }
+                    Layout.fillWidth: true
+                    onTextChanged: updateComputed()
+                }
+
+                Text { text: "ΔZ (m)"; color: textSecondary; font.family: "Codec Pro"; font.pixelSize: 10 }
+                TextField {
+                    id: dzField
+                    text: "0"
+                    validator: DoubleValidator { bottom: -10000000; top: 10000000; decimals: 3 }
+                    Layout.fillWidth: true
+                    onTextChanged: updateComputed()
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                CheckBox {
+                    id: drawLineCheck
+                    text: "Draw line"
+                    checked: true
+                    contentItem: Text {
+                        text: parent.text
+                        color: textPrimary
+                        font.family: "Codec Pro"
+                        font.pixelSize: 10
+                        leftPadding: 24
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Text {
+                    id: bearingPreview
+                    text: ""
+                    font.family: "Codec Pro"
+                    font.pixelSize: 10
+                    color: accentColor
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                color: "#2A2A2A"
+                radius: 4
+                border.color: "#3A3A3A"
+                border.width: 1
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 6
+
+                    Text { text: "Computed"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Bold; color: textPrimary }
+                    Text { text: "X: " + cogoDialog.outX.toFixed(3); font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
+                    Text { text: "Y: " + cogoDialog.outY.toFixed(3); font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
+                    Text { text: "Z: " + cogoDialog.outZ.toFixed(3); font.family: "Codec Pro"; font.pixelSize: 10; color: textSecondary }
+                }
+            }
+
+            Text {
+                text: cogoDialog.errorText
+                visible: cogoDialog.errorText.length > 0
+                color: "#E55353"
+                font.family: "Codec Pro"
+                font.pixelSize: 10
+                wrapMode: Text.WordWrap
+            }
+
+            Item { Layout.fillHeight: true }
+        }
+
+        footer: Rectangle {
+            height: 52
+            color: "transparent"
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 10
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    text: "Cancel"
+                    onClicked: cogoDialog.close()
+                }
+
+                Button {
+                    text: "Add Point"
+                    onClicked: {
+                        var name = newPointNameField.text.trim()
+                        if (name.length === 0) {
+                            cogoDialog.errorText = "Point name is required."
+                            return
+                        }
+
+                        Database.addPoint(name, cogoDialog.outX, cogoDialog.outY, cogoDialog.outZ, newPointCodeField.text, newPointDescField.text)
+
+                        if (drawLineCheck.checked) {
+                            drawnShapes.push({
+                                type: "line",
+                                x1: cogoDialog.baseX,
+                                y1: cogoDialog.baseY,
+                                x2: cogoDialog.outX,
+                                y2: cogoDialog.outY,
+                                color: accentColor
+                            })
+                            pointsCanvas.requestPaint()
+                        }
+
+                        cogoDialog.close()
+                    }
+                }
+            }
+        }
+    }
+
     AddPointDialog {
         id: addPointDialog
         onPickRequested: {

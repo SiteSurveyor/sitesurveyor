@@ -13,12 +13,12 @@ Dialog {
 
     // Signals
     signal pickRequested()
-    signal pointSaved(string name, double y, double x, double z)   // NEW: notify parent
+    signal pointSaved(string name, double x, double y, double z)
 
     // Properties to hold data
     property string pointName: ""
-    property double coordY: 0.0
     property double coordX: 0.0
+    property double coordY: 0.0
     property double coordZ: 0.0
     property string pointCode: ""
     property string pointDesc: ""
@@ -29,8 +29,8 @@ Dialog {
     Component.onCompleted: {
         // initialize fields from properties
         pointNameField.text = pointName
-        yField.text = coordY.toFixed(3)
         xField.text = coordX.toFixed(3)
+        yField.text = coordY.toFixed(3)
         zField.text = coordZ.toFixed(3)
         codeField.text = pointCode
         descField.text = pointDesc
@@ -39,28 +39,28 @@ Dialog {
     // Clear form fields
     function clearFields() {
         pointName = ""
-        coordY = 0.0
         coordX = 0.0
+        coordY = 0.0
         coordZ = 0.0
         pointCode = ""
         pointDesc = ""
 
         pointNameField.text = ""
-        yField.text = "0.000"
         xField.text = "0.000"
+        yField.text = "0.000"
         zField.text = "0.000"
         codeField.text = ""
         descField.text = ""
     }
 
     // Update coordinates from external source (e.g., canvas pick)
-    function setCoordinates(y, x, z) {
-        coordY = typeof y === "number" ? y : coordY
+    function setCoordinates(x, y, z) {
         coordX = typeof x === "number" ? x : coordX
+        coordY = typeof y === "number" ? y : coordY
         if (z !== undefined && typeof z === "number") coordZ = z
 
-        yField.text = coordY.toFixed(3)
         xField.text = coordX.toFixed(3)
+        yField.text = coordY.toFixed(3)
         if (z !== undefined) zField.text = coordZ.toFixed(3)
     }
 
@@ -132,10 +132,10 @@ Dialog {
                 background: Rectangle { color: "white"; radius: 2 }
             }
 
-            // Y (Easting)
-            Text { text: "Y (Easting):"; color: "#ccc"; font.pixelSize: 12; font.family: "Codec Pro" }
+            // X
+            Text { text: "X:"; color: "#ccc"; font.pixelSize: 12; font.family: "Codec Pro" }
             TextField {
-                id: yField
+                id: xField
                 Layout.fillWidth: true
                 text: "0.000"
                 validator: DoubleValidator { decimals: 3 }
@@ -143,10 +143,10 @@ Dialog {
                 background: Rectangle { color: "white"; radius: 2 }
             }
 
-            // X (Northing)
-            Text { text: "X (Northing):"; color: "#ccc"; font.pixelSize: 12; font.family: "Codec Pro" }
+            // Y
+            Text { text: "Y:"; color: "#ccc"; font.pixelSize: 12; font.family: "Codec Pro" }
             TextField {
-                id: xField
+                id: yField
                 Layout.fillWidth: true
                 text: "0.000"
                 validator: DoubleValidator { decimals: 3 }
@@ -208,8 +208,8 @@ Dialog {
                 background: Rectangle { color: parent.down ? "#2a65c0" : "#3277d5"; radius: 4; width: 100; height: 32 }
                 onClicked: {
                     var n = pointNameField.text.trim()
-                    var y = parseFloat(yField.text)
                     var x = parseFloat(xField.text)
+                    var y = parseFloat(yField.text)
                     var z = parseFloat(zField.text)
                     var c = codeField.text
                     var d = descField.text
@@ -221,16 +221,16 @@ Dialog {
 
                     // Update dialog properties before saving/emitting
                     pointName = n
-                    coordY = isNaN(y) ? 0.0 : y
                     coordX = isNaN(x) ? 0.0 : x
+                    coordY = isNaN(y) ? 0.0 : y
                     coordZ = isNaN(z) ? 0.0 : z
                     pointCode = c
                     pointDesc = d
 
                     try {
-                        Database.addPoint(n, coordY, coordX, coordZ, c, d)
-                        console.log("Point added:", n, coordY, coordX, coordZ)
-                        root.pointSaved(n, coordY, coordX, coordZ)   // notify caller
+                        Database.addPoint(n, coordX, coordY, coordZ, c, d)
+                        console.log("Point added:", n, coordX, coordY, coordZ)
+                        root.pointSaved(n, coordX, coordY, coordZ)
                         root.accept()
                     } catch(e) {
                         console.log("Database Error:", e)

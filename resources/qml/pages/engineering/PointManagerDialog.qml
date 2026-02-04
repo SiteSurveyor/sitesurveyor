@@ -22,9 +22,9 @@ Dialog {
             spacing: 10
             Text { text: "Name"; font.bold: true; Layout.preferredWidth: 80; color: "#E8E8E8" }
             Text { text: "Code"; font.bold: true; Layout.preferredWidth: 80; color: "#E8E8E8" }
-            Text { text: "Easting (X)"; font.bold: true; Layout.preferredWidth: 100; color: "#E8E8E8" }
-            Text { text: "Northing (Y)"; font.bold: true; Layout.preferredWidth: 100; color: "#E8E8E8" }
-            Text { text: "Elev (Z)"; font.bold: true; Layout.preferredWidth: 80; color: "#E8E8E8" }
+            Text { text: "X"; font.bold: true; Layout.preferredWidth: 100; color: "#E8E8E8" }
+            Text { text: "Y"; font.bold: true; Layout.preferredWidth: 100; color: "#E8E8E8" }
+            Text { text: "Z"; font.bold: true; Layout.preferredWidth: 80; color: "#E8E8E8" }
             Item { Layout.fillWidth: true }
         }
 

@@ -158,7 +158,7 @@ bool DatabaseManager::initSpatialite()
     sqlite3 *sqliteHandle = nullptr;
     const QVariant driverHandle = m_db.driver()->handle();
     if (driverHandle.isValid() && QString(driverHandle.typeName()) == "sqlite3*") {
-        sqliteHandle = *static_cast<sqlite3 **>(driverHandle.data());
+        sqliteHandle = *static_cast<sqlite3 *const *>(driverHandle.data());
     }
 
     QSqlQuery query(m_db);
