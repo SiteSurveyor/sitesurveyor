@@ -155,6 +155,9 @@ Window {
     property int crosshairSize: 5
     property int pickboxSize: 5
     property int snapMarkerSize: 10
+    property var lineTypeNames: ["Continuous", "Dashed", "Center", "Hidden"]
+    property string currentLineType: "Continuous"
+    property real lineTypeScale: 1.0
 
     // Coordinate system properties
     property real fitScale: 1.0
@@ -191,6 +194,12 @@ Window {
     // Processing overlay control (avoid splash on CAD entry)
     property bool processingOverlayEnabled: false
     property string processingOverlayMessage: "Processing..."
+    // Overlay for topbar menus (ensures dropdowns render above canvas)
+    Item {
+        id: menuOverlay
+        anchors.fill: parent
+        z: 10000
+    }
 
     // Tool models for sidebar organization
     property var navTools: [
@@ -230,6 +239,34 @@ Window {
         {action: "options", icon: "\uf013", name: "Opts", tooltip: "CAD Options"}
     ]
 
+    // Tool sidebar layout sizing (fit without scrolling)
+    property int toolSidebarColumns: 3
+    property int toolSidebarHeaderCount: 6
+    property int toolSidebarEditCount: 3
+    property int toolSidebarToggleCount: 3
+    property int toolSidebarTileCount: navTools.length + drawTools.length + surveyTools.length +
+                                      earthworkTools.length + displayTools.length +
+                                      toolSidebarEditCount + toolSidebarToggleCount
+    property int toolSidebarTileRows: Math.ceil(toolSidebarTileCount / toolSidebarColumns)
+    property int toolSidebarExtraRows: 1
+    property real toolSidebarGridHeight: toolScroll ? toolScroll.height : 0
+    property real toolSidebarRowSpacing: toolSidebarGridHeight < 620 ? 4 : 6
+    property real toolSidebarHeaderHeight: toolSidebarGridHeight < 620 ? 16 : 18
+    property real toolSidebarTileHeight: {
+        var rows = toolSidebarTileRows
+        if (rows <= 0) return 36
+        var totalRows = toolSidebarHeaderCount + rows + toolSidebarExtraRows
+        var usable = toolSidebarGridHeight -
+                     (toolSidebarHeaderCount * toolSidebarHeaderHeight) -
+                     (toolSidebarRowSpacing * Math.max(0, totalRows - 1))
+        return Math.max(30, Math.min(44, Math.floor(usable / rows)))
+    }
+    property int toolSidebarIconSize: toolSidebarTileHeight >= 40 ? 12 :
+                                      (toolSidebarTileHeight >= 34 ? 11 : 10)
+    property int toolSidebarLabelSize: toolSidebarTileHeight >= 42 ? 9 :
+                                       (toolSidebarTileHeight >= 36 ? 8 : 7)
+    property int toolSidebarHeaderTextSize: toolSidebarGridHeight < 620 ? 7 : 8
+
     function startProcessing(message) {
         processingOverlayMessage = message || "Processing..."
         processingOverlayEnabled = true
@@ -240,8 +277,9 @@ Window {
         processingOverlayEnabled = false
     }
 
-    function clearTransientStates(clearSelection) {
+    function clearTransientStates(clearSelection, clearDrawings) {
         if (clearSelection === undefined) clearSelection = true
+        if (clearDrawings === undefined) clearDrawings = false
         measurePoints = []
         drawingState = { active: false }
         polylineDraftPoints = []
@@ -252,14 +290,21 @@ Window {
             selectedPointIndex = -1
         }
 
-        var cleanShapes = []
-        for (var s = 0; s < drawnShapes.length; s++) {
-            var t = drawnShapes[s].type
-            if (t !== "measure_line" && t !== "measure_poly") {
-                cleanShapes.push(drawnShapes[s])
+        if (clearDrawings) {
+            drawnShapes = []
+            boundaryPolygon = []
+            undoStack = []
+            redoStack = []
+        } else {
+            var cleanShapes = []
+            for (var s = 0; s < drawnShapes.length; s++) {
+                var t = drawnShapes[s].type
+                if (t !== "measure_line" && t !== "measure_poly") {
+                    cleanShapes.push(drawnShapes[s])
+                }
             }
+            drawnShapes = cleanShapes
         }
-        drawnShapes = cleanShapes
         if (selectionBox) selectionBox.visible = false
         if (canvasMouseArea) canvasMouseArea.isBoxSelecting = false
         if (pointsCanvas) pointsCanvas.requestPaint()
@@ -1139,46 +1184,80 @@ Window {
     }
     // Parse CSV with column mapping
     // Helper function to find point near click
-    function findPointAtPosition(mouseX, mouseY) {
-        if (!snapEnabled) return -1
+    function findPointAtPosition(mouseX, mouseY, requireSnapEnabled) {
+        if (requireSnapEnabled !== false && !snapEnabled) return -1
         if (importedPoints.count === 0) return -1
-
-        // Calculate bounds and scale (same as in onPaint)
-        var minX = 999999999, maxX = -999999999
-        var minY = 999999999, maxY = -999999999
-
-        for (var i = 0; i < importedPoints.count; i++) {
-            var pt = importedPoints.get(i)
-            if (pt.x < minX) minX = pt.x
-            if (pt.x > maxX) maxX = pt.x
-            if (pt.y < minY) minY = pt.y
-            if (pt.y > maxY) maxY = pt.y
-        }
-
-        var rangeX = maxX - minX
-        var rangeY = maxY - minY
-        var scale = Math.min((pointsCanvas.width - 100) / (rangeX || 1), (pointsCanvas.height - 100) / (rangeY || 1)) * canvasScale
-        if (scale === 0 || !isFinite(scale)) scale = 1.0
-
-        var offsetX = 50 - minX * scale
-        var offsetY = pointsCanvas.height - 50 + minY * scale
+        var pickRadius = Math.max(8, pickboxSize * 1.5)
 
         // Check each point to see if click is near it
+        var bestIdx = -1
+        var bestDist = pickRadius
         for (var j = 0; j < importedPoints.count; j++) {
             var point = importedPoints.get(j)
-            var screenX = offsetX + point.x * scale + canvasOffsetX
-            var screenY = offsetY - point.y * scale + canvasOffsetY
-
-            var dx = mouseX - screenX
-            var dy = mouseY - screenY
+            var screenPos = worldToScreen(point.x, point.y)
+            var dx = mouseX - screenPos.x
+            var dy = mouseY - screenPos.y
             var distance = Math.sqrt(dx * dx + dy * dy)
-
-            if (distance <= 8) {  // 8-pixel click radius
-                return j
+            if (distance <= bestDist) {  // click radius
+                bestDist = distance
+                bestIdx = j
             }
         }
 
-        return -1
+        return bestIdx
+    }
+
+    function findSnapWorldPos(mouseX, mouseY) {
+        if (!snapEnabled) return null
+        var snapRadius = Math.max(8, pickboxSize * 1.5, snapMarkerSize * 0.5)
+        var best = null
+        var bestDist = snapRadius
+
+        function considerPoint(wx, wy) {
+            var screenPos = worldToScreen(wx, wy)
+            var dx = mouseX - screenPos.x
+            var dy = mouseY - screenPos.y
+            var distance = Math.sqrt(dx * dx + dy * dy)
+            if (distance <= bestDist) {
+                bestDist = distance
+                best = { x: wx, y: wy }
+            }
+        }
+
+        for (var i = 0; i < importedPoints.count; i++) {
+            var pt = importedPoints.get(i)
+            considerPoint(pt.x, pt.y)
+        }
+
+        if (drawnShapes && drawnShapes.length > 0) {
+            for (var s = 0; s < drawnShapes.length; s++) {
+                var shape = drawnShapes[s]
+                if (shape.type === "line" || shape.type === "measure_line") {
+                    considerPoint(shape.x1, shape.y1)
+                    considerPoint(shape.x2, shape.y2)
+                } else if (shape.type === "rectangle") {
+                    considerPoint(shape.x, shape.y)
+                    considerPoint(shape.x + shape.w, shape.y)
+                    considerPoint(shape.x, shape.y + shape.h)
+                    considerPoint(shape.x + shape.w, shape.y + shape.h)
+                } else if (shape.type === "circle") {
+                    considerPoint(shape.cx, shape.cy)
+                } else if ((shape.type === "polyline" || shape.type === "polygon" || shape.type === "boundary" || shape.type === "measure_poly") && shape.points) {
+                    for (var p = 0; p < shape.points.length; p++) {
+                        considerPoint(shape.points[p].x, shape.points[p].y)
+                    }
+                }
+            }
+        }
+
+        return best
+    }
+
+    function getWorldPosWithSnap(mouseX, mouseY) {
+        var snapPos = findSnapWorldPos(mouseX, mouseY)
+        if (snapPos) return { x: snapPos.x, y: snapPos.y, snapped: true }
+        var worldPos = screenToWorld(mouseX, mouseY)
+        return { x: worldPos.x, y: worldPos.y, snapped: false }
     }
     function calculateDistance(x1, y1, x2, y2) {
         var dx = x2 - x1
@@ -1242,6 +1321,49 @@ Window {
         return Math.abs(area / 2.0)
     }
 
+    function lineDashForType(lineType) {
+        switch (lineType) {
+        case "Dashed":
+            return [8, 6]
+        case "Center":
+            return [12, 4, 2, 4]
+        case "Hidden":
+            return [4, 4]
+        default:
+            return []
+        }
+    }
+
+    function applyLineDash(ctx, lineType) {
+        var effectiveType = (lineType && lineType.length > 0) ? lineType : "Continuous"
+        var dash = lineDashForType(effectiveType)
+        if (!dash || dash.length === 0) {
+            ctx.setLineDash([])
+            return
+        }
+        var scale = lineTypeScale > 0 ? lineTypeScale : 1.0
+        var scaled = []
+        for (var i = 0; i < dash.length; i++) {
+            scaled.push(dash[i] * scale)
+        }
+        ctx.setLineDash(scaled)
+    }
+
+    function drawDimLabel(ctx, text, x, y, color) {
+        if (!text) return
+        ctx.save()
+        ctx.font = "bold 11px sans-serif"
+        ctx.textBaseline = "alphabetic"
+        var pad = 3
+        var metrics = ctx.measureText(text)
+        var w = metrics.width
+        ctx.fillStyle = "rgba(20,20,20,0.8)"
+        ctx.fillRect(x - w / 2 - pad, y - 12, w + pad * 2, 14)
+        ctx.fillStyle = color || "#FFD54F"
+        ctx.fillText(text, x - w / 2, y - 2)
+        ctx.restore()
+    }
+
     function parseWithMapping(nameIdx, xIdx, yIdx, zIdx) {
         // importedPoints.clear() // Do not clear local model, let DB refresh handle it
 
@@ -1285,13 +1407,13 @@ Window {
         id: cadInterface
         anchors.fill: parent
         color: bgColor
-
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
 
             // Top Menu Bar (AutoCAD style)
             Rectangle {
+                z: 5
                 Layout.fillWidth: true
                 Layout.preferredHeight: 32
                 color: "#1A1A1A"
@@ -1362,7 +1484,12 @@ Window {
 
                         Menu {
                             id: fileMenu
-                            y: parent.height
+                            parent: menuOverlay
+                            z: 2000
+                            modal: false
+                            closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+                            x: fileMenuMa.mapToItem(menuOverlay, 0, fileMenuMa.height).x
+                            y: fileMenuMa.mapToItem(menuOverlay, 0, fileMenuMa.height).y
                             background: Rectangle {
                                 color: "#2A2A2A"
                                 border.color: "#4A4A4A"
@@ -1422,7 +1549,12 @@ Window {
 
                         Menu {
                             id: viewMenu
-                            y: parent.height
+                            parent: menuOverlay
+                            z: 2000
+                            modal: false
+                            closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+                            x: viewMenuMa.mapToItem(menuOverlay, 0, viewMenuMa.height).x
+                            y: viewMenuMa.mapToItem(menuOverlay, 0, viewMenuMa.height).y
                             background: Rectangle {
                                 color: "#2A2A2A"
                                 border.color: "#4A4A4A"
@@ -1498,7 +1630,12 @@ Window {
 
                         Menu {
                             id: surveyMenu
-                            y: parent.height
+                            parent: menuOverlay
+                            z: 2000
+                            modal: false
+                            closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+                            x: surveyMenuMa.mapToItem(menuOverlay, 0, surveyMenuMa.height).x
+                            y: surveyMenuMa.mapToItem(menuOverlay, 0, surveyMenuMa.height).y
                             background: Rectangle {
                                 color: "#2A2A2A"
                                 border.color: "#4A4A4A"
@@ -1567,7 +1704,12 @@ Window {
 
                         Menu {
                             id: draftMenu
-                            y: parent.height
+                            parent: menuOverlay
+                            z: 2000
+                            modal: false
+                            closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+                            x: draftMenuMa.mapToItem(menuOverlay, 0, draftMenuMa.height).x
+                            y: draftMenuMa.mapToItem(menuOverlay, 0, draftMenuMa.height).y
                             background: Rectangle {
                                 color: "#2A2A2A"
                                 border.color: "#4A4A4A"
@@ -1612,7 +1754,12 @@ Window {
 
                         Menu {
                             id: settingsMenu
-                            y: parent.height
+                            parent: menuOverlay
+                            z: 2000
+                            modal: false
+                            closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+                            x: settingsMenuMa.mapToItem(menuOverlay, 0, settingsMenuMa.height).x
+                            y: settingsMenuMa.mapToItem(menuOverlay, 0, settingsMenuMa.height).y
                             background: Rectangle {
                                 color: "#2A2A2A"
                                 border.color: "#4A4A4A"
@@ -1656,7 +1803,12 @@ Window {
 
                         Menu {
                             id: ewMenu
-                            y: parent.height
+                            parent: menuOverlay
+                            z: 2000
+                            modal: false
+                            closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+                            x: ewMenuMa.mapToItem(menuOverlay, 0, ewMenuMa.height).x
+                            y: ewMenuMa.mapToItem(menuOverlay, 0, ewMenuMa.height).y
                             background: Rectangle {
                                 color: "#2A2A2A"
                                 border.color: "#4A4A4A"
@@ -1833,6 +1985,7 @@ Window {
 
             // Main content area
             RowLayout {
+                z: 0
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 spacing: 0
@@ -1840,17 +1993,77 @@ Window {
                 // Left sidebar - Tools (fixed 3-column grid)
                 Rectangle {
                     id: toolSidebar
-                    Layout.preferredWidth: 160
-                    Layout.preferredWidth: 100
+                    property bool collapsed: false
+
+                    Layout.preferredWidth: collapsed ? 40 : 160
                     Layout.fillHeight: true
                     color: darkCardBg
                     border.color: "#3A3A3A"
                     border.width: 1
+                    clip: true
+
+                    Behavior on Layout.preferredWidth {
+                        NumberAnimation { duration: 250; easing.type: Easing.InOutQuad }
+                    }
 
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 6
                         spacing: 6
+                        RowLayout {
+                            id: toolSidebarHeader
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 28
+                            spacing: 6
+
+                            Text {
+                                text: "\uf0ad"  // tools icon
+                                font.family: "Font Awesome 5 Pro Solid"
+                                font.pixelSize: 10
+                                color: accentColor
+                                visible: !toolSidebar.collapsed
+                            }
+
+                            Text {
+                                text: "Tools"
+                                font.family: "Codec Pro"
+                                font.pixelSize: 11
+                                font.weight: Font.Bold
+                                color: textPrimary
+                                Layout.fillWidth: true
+                                visible: !toolSidebar.collapsed
+                            }
+
+                            Rectangle {
+                                width: 26
+                                height: 26
+                                color: collapseToolBtnMa.containsMouse ? "#3A3A3A" : "transparent"
+                                radius: 4
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: toolSidebar.collapsed ? "\uf054" : "\uf053"  // chevron-right / chevron-left
+                                    font.family: "Font Awesome 5 Pro Solid"
+                                    font.pixelSize: 10
+                                    color: accentColor
+                                }
+
+                                MouseArea {
+                                    id: collapseToolBtnMa
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: toolSidebar.collapsed = !toolSidebar.collapsed
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: "#3A3A3A"
+                            visible: !toolSidebar.collapsed
+                        }
 
                         // Tools (scrollable 3-column grid)
                         ScrollView {
@@ -1858,13 +2071,15 @@ Window {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                            visible: !toolSidebar.collapsed
+                            ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                             GridLayout {
                                 width: toolScroll.width
                                 columns: 3
-                                rowSpacing: 6
-                                columnSpacing: 6
+                                rowSpacing: root.toolSidebarRowSpacing
+                                columnSpacing: root.toolSidebarRowSpacing
                                 ToolSectionHeader { label: "Navigation" }
 
                                 Repeater {
@@ -1890,8 +2105,8 @@ Window {
                                 }
 
                                 ToolTile {
-                                    toolData: ({ icon: "\uf12d", name: "Clear", tooltip: "Clear measurements/drafts" })
-                                    onClicked: clearTransientStates(false)
+                                    toolData: ({ icon: "\uf12d", name: "Clear", tooltip: "Clear drawings/measurements/drafts" })
+                                    onClicked: clearTransientStates(true, true)
                                 }
 
                                 ToolSectionHeader { label: "Draft"; Layout.topMargin: 4 }
@@ -1958,7 +2173,11 @@ Window {
                                     }
                                 }
 
-                                Item { Layout.columnSpan: 3; height: 1 }
+                                Item {
+                                    Layout.columnSpan: 3
+                                    Layout.preferredHeight: 1
+                                    height: 1
+                                }
                             }
                         }
                     }
@@ -1969,6 +2188,7 @@ Window {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     color: canvasBg
+                    clip: true
 
                     // Grid pattern + Points Canvas
                     Canvas {
@@ -2318,30 +2538,35 @@ Window {
                             }
                                 // Draw drawn shapes (Lines, Circles, Rectangles)
                                 if (drawnShapes && drawnShapes.length > 0) {
-                                    ctx.lineWidth = 1.5
                                     for (var k = 0; k < drawnShapes.length; k++) {
                                         var shape = drawnShapes[k]
+                                        ctx.save()
+                                        ctx.lineWidth = 1.5
                                         ctx.strokeStyle = shape.color || "white"
                                         ctx.beginPath()
                                         var skipFinalStroke = false
 
                                         if (shape.type === "line") {
+                                            applyLineDash(ctx, shape.lineType)
                                             var p1 = worldToScreen(shape.x1, shape.y1)
                                             var p2 = worldToScreen(shape.x2, shape.y2)
                                             ctx.moveTo(p1.x, p1.y)
                                             ctx.lineTo(p2.x, p2.y)
                                         } else if (shape.type === "circle") {
+                                            applyLineDash(ctx, shape.lineType)
                                             var c = worldToScreen(shape.cx, shape.cy)
                                             // Scale radius from world to screen
                                             var r = shape.radius * fitScale * canvasScale
                                             ctx.arc(c.x, c.y, r, 0, 2 * Math.PI)
                                         } else if (shape.type === "rectangle") {
+                                            applyLineDash(ctx, shape.lineType)
                                             var pStart = worldToScreen(shape.x, shape.y)
                                             // Dimensions need to be scaled
                                             var sw = shape.w * fitScale * canvasScale
                                             var sh = -shape.h * fitScale * canvasScale // Y inverted
                                             ctx.rect(pStart.x, pStart.y, sw, sh)
                                         } else if (shape.type === "polyline" && shape.points) {
+                                            applyLineDash(ctx, shape.lineType)
                                             var pts = shape.points
                                             if (pts.length > 1) {
                                                 var p0 = worldToScreen(pts[0].x, pts[0].y)
@@ -2354,7 +2579,6 @@ Window {
                                         } else if (shape.type === "boundary" && shape.points) {
                                             var pts = shape.points
                                             if (pts.length > 2) {
-                                                ctx.save()
                                                 ctx.strokeStyle = shape.color || "#FFB020"
                                                 ctx.fillStyle = shape.fillColor || "rgba(255,176,32,0.07)"
                                                 ctx.lineWidth = 2
@@ -2369,10 +2593,10 @@ Window {
                                                 ctx.closePath()
                                                 ctx.fill()
                                                 ctx.stroke()
-                                                ctx.restore()
                                                 skipFinalStroke = true
                                             }
                                         } else if (shape.type === "polygon" && shape.points) {
+                                            applyLineDash(ctx, shape.lineType)
                                             var pts = shape.points
                                             if (pts.length > 0) {
                                                 var p0 = worldToScreen(pts[0].x, pts[0].y)
@@ -2391,20 +2615,16 @@ Window {
                                             // Render Measure Distance Line
                                             var p1 = worldToScreen(shape.x1, shape.y1)
                                             var p2 = worldToScreen(shape.x2, shape.y2)
-
-                                            ctx.save()
-                                            ctx.setLineDash([5, 5])
                                             ctx.moveTo(p1.x, p1.y)
                                             ctx.lineTo(p2.x, p2.y)
                                             ctx.stroke()
-                                            ctx.restore()
 
                                             // Label (Dist + Bearing)
                                             var midX = (p1.x + p2.x) / 2
                                             var midY = (p1.y + p2.y) / 2
                                             var bearing = calculateBearing(shape.x1, shape.y1, shape.x2, shape.y2)
 
-                                            var label = shape.distance.toFixed(3) + "m  " + formatQuadrantBearing(bearing)
+                                            var label = shape.distance.toFixed(3) + "m  " + formatDMS(bearing)
                                             ctx.fillStyle = "#00CED1"
                                             ctx.font = "bold 11px sans-serif"
                                             var dim = ctx.measureText(label)
@@ -2419,7 +2639,6 @@ Window {
 
                                         } else if (shape.type === "measure_poly") {
                                             // Render Measure Area Polygon
-                                            ctx.save()
                                             ctx.fillStyle = "rgba(0, 206, 209, 0.15)"
                                             ctx.setLineDash([2, 4])
 
@@ -2453,46 +2672,103 @@ Window {
                                                 ctx.fillStyle = "#00CED1"
                                                 ctx.fillText(areaLabel, cx - adim.width/2, cy - 2)
                                             }
-                                            ctx.restore()
                                             skipFinalStroke = true
                                         }
-
                                         if (!skipFinalStroke) ctx.stroke()
+                                        ctx.restore()
                                     }
                                 }
 
                                 // Draw active drawing preview
                                 if (drawingState && drawingState.active) {
-                                    ctx.strokeStyle = "yellow"
-                                    ctx.lineWidth = 1
-                                    ctx.beginPath()
 
                                     var screenStart = worldToScreen(drawingState.startX, drawingState.startY)
                                     var screenCurr = worldToScreen(drawingState.currentX, drawingState.currentY)
 
                                     if (selectedTool === 3) { // Line
+                                        ctx.save()
+                                        ctx.strokeStyle = "yellow"
+                                        ctx.lineWidth = 1.5
+                                        applyLineDash(ctx, currentLineType)
+                                        ctx.beginPath()
                                         ctx.moveTo(screenStart.x, screenStart.y)
                                         ctx.lineTo(screenCurr.x, screenCurr.y)
+                                        ctx.stroke()
+
+                                        // Guide lines (orthogonal tracking)
+                                        ctx.setLineDash([3, 5])
+                                        ctx.strokeStyle = "rgba(255,255,0,0.35)"
+                                        ctx.beginPath()
+                                        ctx.moveTo(screenStart.x, screenStart.y)
+                                        ctx.lineTo(screenCurr.x, screenStart.y)
+                                        ctx.lineTo(screenCurr.x, screenCurr.y)
+                                        ctx.stroke()
+                                        ctx.restore()
+
+                                        var len = calculateDistance(drawingState.startX, drawingState.startY, drawingState.currentX, drawingState.currentY)
+                                        var bearing = calculateBearing(drawingState.startX, drawingState.startY, drawingState.currentX, drawingState.currentY)
+                                        drawDimLabel(ctx, len.toFixed(3) + "m  " + formatDMS(bearing),
+                                                     (screenStart.x + screenCurr.x) / 2, (screenStart.y + screenCurr.y) / 2, "#FFD54F")
                                     } else if (selectedTool === 4) { // Circle
+                                        ctx.save()
+                                        ctx.strokeStyle = "yellow"
+                                        ctx.lineWidth = 1.5
+                                        applyLineDash(ctx, currentLineType)
                                         var dx = screenCurr.x - screenStart.x
                                         var dy = screenCurr.y - screenStart.y
                                         var r = Math.sqrt(dx*dx + dy*dy)
+                                        ctx.beginPath()
                                         ctx.arc(screenStart.x, screenStart.y, r, 0, 2 * Math.PI)
+                                        ctx.stroke()
+
+                                        // Radius guide
+                                        ctx.setLineDash([3, 5])
+                                        ctx.strokeStyle = "rgba(255,255,0,0.35)"
+                                        ctx.beginPath()
+                                        ctx.moveTo(screenStart.x, screenStart.y)
+                                        ctx.lineTo(screenCurr.x, screenCurr.y)
+                                        ctx.stroke()
+                                        ctx.restore()
+
+                                        var radius = calculateDistance(drawingState.startX, drawingState.startY, drawingState.currentX, drawingState.currentY)
+                                        drawDimLabel(ctx, "R=" + radius.toFixed(3) + "  D=" + (radius * 2).toFixed(3),
+                                                     (screenStart.x + screenCurr.x) / 2, (screenStart.y + screenCurr.y) / 2, "#FFD54F")
                                     } else if (selectedTool === 5) { // Rectangle
-                                        // Simple rect preview
+                                        ctx.save()
+                                        ctx.strokeStyle = "yellow"
+                                        ctx.lineWidth = 1.5
+                                        applyLineDash(ctx, currentLineType)
+                                        // Simple rect preview (screen space)
                                         var w = screenCurr.x - screenStart.x
                                         var h = screenCurr.y - screenStart.y
+                                        ctx.beginPath()
                                         ctx.rect(screenStart.x, screenStart.y, w, h)
+                                        ctx.stroke()
+
+                                        // Guide lines
+                                        ctx.setLineDash([3, 5])
+                                        ctx.strokeStyle = "rgba(255,255,0,0.35)"
+                                        ctx.beginPath()
+                                        ctx.moveTo(screenStart.x, screenStart.y)
+                                        ctx.lineTo(screenCurr.x, screenStart.y)
+                                        ctx.lineTo(screenCurr.x, screenCurr.y)
+                                        ctx.stroke()
+                                        ctx.restore()
+
+                                        var wWorld = Math.abs(drawingState.currentX - drawingState.startX)
+                                        var hWorld = Math.abs(drawingState.currentY - drawingState.startY)
+                                        drawDimLabel(ctx, "W=" + wWorld.toFixed(3) + "  H=" + hWorld.toFixed(3),
+                                                     (screenStart.x + screenCurr.x) / 2, (screenStart.y + screenCurr.y) / 2, "#FFD54F")
                                     } else if (selectedTool === 10) { // Measure Distance
                                         ctx.strokeStyle = "#00CED1"
                                         ctx.setLineDash([5, 5])
+                                        ctx.beginPath()
                                         ctx.moveTo(screenStart.x, screenStart.y)
                                         ctx.lineTo(screenCurr.x, screenCurr.y)
                                         ctx.stroke() // Stroke WHILE dashed
                                         ctx.setLineDash([]) // Then reset
-                                        ctx.beginPath() // Clear path to avoid double stroke by following code
                                     } else {
-                                        ctx.stroke() // Stroke for other tools (3,4,5)
+                                        ctx.stroke() // Stroke for other tools
                                     }
                                 }
 
@@ -2659,8 +2935,8 @@ Window {
 
                         onClicked: (mouse) => {
                             if (root.pickingControlPoint) {
-                                var worldPos = screenToWorld(mouse.x, mouse.y)
-                                addPointDialog.setCoordinates(worldPos.x, worldPos.y, 0.0)
+                                var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                addPointDialog.setCoordinates(snapWorld.x, snapWorld.y, 0.0)
                                 addPointDialog.open()
                                 root.pickingControlPoint = false
                                 return
@@ -2669,14 +2945,8 @@ Window {
                             if (selectedTool === 10) { // Measure Distance (Click-Click)
                                 if (!drawingState.active) {
                                     // Step 1: Start Measuring
-                                    var snapIdx = findPointAtPosition(mouse.x, mouse.y)
-                                    var worldPos
-                                    if (snapIdx !== -1) {
-                                        var pt = importedPoints.get(snapIdx)
-                                        worldPos = { x: pt.x, y: pt.y }
-                                    } else {
-                                        worldPos = screenToWorld(mouse.x, mouse.y)
-                                    }
+                                    var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                    var worldPos = { x: snapWorld.x, y: snapWorld.y }
 
                                     drawingState = {
                                         active: true,
@@ -2687,14 +2957,8 @@ Window {
                                     }
                                 } else {
                                     // Step 2: Finish Measuring
-                                    var snapIdx = findPointAtPosition(mouse.x, mouse.y)
-                                    var finalPos
-                                    if (snapIdx !== -1) {
-                                        var pt = importedPoints.get(snapIdx)
-                                        finalPos = { x: pt.x, y: pt.y }
-                                    } else {
-                                        finalPos = { x: drawingState.currentX, y: drawingState.currentY }
-                                    }
+                                    var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                    var finalPos = snapWorld.snapped ? { x: snapWorld.x, y: snapWorld.y } : { x: drawingState.currentX, y: drawingState.currentY }
 
                                     var dist = calculateDistance(drawingState.startX, drawingState.startY, finalPos.x, finalPos.y)
                                     if (dist > 0) {
@@ -2713,46 +2977,98 @@ Window {
                                     drawingState = { active: false }
                                 }
                             } else if (selectedTool === 11) { // Measure Area add point
-                                var worldPos = screenToWorld(mouse.x, mouse.y)
+                                var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                var worldPos = { x: snapWorld.x, y: snapWorld.y }
                                 var pts = measurePoints ? measurePoints : []
                                 pts.push({x: worldPos.x, y: worldPos.y})
                                 measurePoints = pts
                                 pointsCanvas.requestPaint()
-                            } else if (selectedTool === 6) { // Polyline add point
-                                var snapIdx = findPointAtPosition(mouse.x, mouse.y)
-                                var worldPos
-                                if (snapIdx !== -1) {
-                                    var pt = importedPoints.get(snapIdx)
-                                    worldPos = { x: pt.x, y: pt.y }
+                            } else if (selectedTool === 3 || selectedTool === 4 || selectedTool === 5) { // Line/Circle/Rectangle click-click
+                                var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                var worldPos = { x: snapWorld.x, y: snapWorld.y }
+
+                                if (!drawingState.active) {
+                                    drawingState = {
+                                        active: true,
+                                        startX: worldPos.x,
+                                        startY: worldPos.y,
+                                        currentX: worldPos.x,
+                                        currentY: worldPos.y
+                                    }
                                 } else {
-                                    worldPos = screenToWorld(mouse.x, mouse.y)
+                                    var shape = null
+                                    var layerName = (activeLayer < layers.count) ? layers.get(activeLayer).layerName : "Layer"
+                                    var layerColor = (activeLayer < layers.count) ? layers.get(activeLayer).layerColor : "white"
+
+                                    if (selectedTool === 3) { // Line
+                                        shape = {
+                                            type: "line",
+                                            x1: drawingState.startX,
+                                            y1: drawingState.startY,
+                                            x2: worldPos.x,
+                                            y2: worldPos.y,
+                                            color: layerColor,
+                                            layer: layerName,
+                                            lineType: currentLineType
+                                        }
+                                    } else if (selectedTool === 4) { // Circle
+                                        var dx = worldPos.x - drawingState.startX
+                                        var dy = worldPos.y - drawingState.startY
+                                        var radius = Math.sqrt(dx*dx + dy*dy)
+                                        shape = {
+                                            type: "circle",
+                                            cx: drawingState.startX,
+                                            cy: drawingState.startY,
+                                            radius: radius,
+                                            color: layerColor,
+                                            layer: layerName,
+                                            lineType: currentLineType
+                                        }
+                                    } else if (selectedTool === 5) { // Rectangle
+                                        var w = worldPos.x - drawingState.startX
+                                        var h = worldPos.y - drawingState.startY
+                                        shape = {
+                                            type: "rectangle",
+                                            x: drawingState.startX,
+                                            y: drawingState.startY,
+                                            w: w,
+                                            h: h,
+                                            color: layerColor,
+                                            layer: layerName,
+                                            lineType: currentLineType
+                                        }
+                                    }
+
+                                    if (shape) {
+                                        pushUndoState()
+                                        var newShapes = drawnShapes
+                                        if (!newShapes) newShapes = []
+                                        newShapes.push(shape)
+                                        drawnShapes = newShapes
+                                        pointsCanvas.requestPaint()
+                                    }
+                                    drawingState = { active: false }
                                 }
+                                lastMouseX = mouse.x
+                                lastMouseY = mouse.y
+                                pointsCanvas.requestPaint()
+                            } else if (selectedTool === 6) { // Polyline add point
+                                var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                var worldPos = { x: snapWorld.x, y: snapWorld.y }
                                 var pts = polylineDraftPoints ? polylineDraftPoints : []
                                 pts.push({ x: worldPos.x, y: worldPos.y })
                                 polylineDraftPoints = pts
                                 pointsCanvas.requestPaint()
                             } else if (selectedTool === 7) { // Polygon add point
-                                var snapIdx = findPointAtPosition(mouse.x, mouse.y)
-                                var worldPos
-                                if (snapIdx !== -1) {
-                                    var pt = importedPoints.get(snapIdx)
-                                    worldPos = { x: pt.x, y: pt.y }
-                                } else {
-                                    worldPos = screenToWorld(mouse.x, mouse.y)
-                                }
+                                var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                var worldPos = { x: snapWorld.x, y: snapWorld.y }
                                 var pts = polygonDraftPoints ? polygonDraftPoints : []
                                 pts.push({ x: worldPos.x, y: worldPos.y })
                                 polygonDraftPoints = pts
                                 pointsCanvas.requestPaint()
                             } else if (selectedTool === 12) { // Boundary add point
-                                var snapIdx = findPointAtPosition(mouse.x, mouse.y)
-                                var worldPos
-                                if (snapIdx !== -1) {
-                                    var pt = importedPoints.get(snapIdx)
-                                    worldPos = { x: pt.x, y: pt.y }
-                                } else {
-                                    worldPos = screenToWorld(mouse.x, mouse.y)
-                                }
+                                var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                var worldPos = { x: snapWorld.x, y: snapWorld.y }
                                 var pts = boundaryDraftPoints ? boundaryDraftPoints : []
                                 pts.push({ x: worldPos.x, y: worldPos.y })
                                 boundaryDraftPoints = pts
@@ -2783,7 +3099,8 @@ Window {
                                          type: "polyline",
                                          points: polylineDraftPoints,
                                          color: layerColor,
-                                         layer: layerName
+                                         layer: layerName,
+                                         lineType: currentLineType
                                      })
                                      polylineDraftPoints = []
                                      pointsCanvas.requestPaint()
@@ -2797,7 +3114,8 @@ Window {
                                          type: "polygon",
                                          points: polygonDraftPoints,
                                          color: layerColor,
-                                         layer: layerName
+                                         layer: layerName,
+                                         lineType: currentLineType
                                      })
                                      polygonDraftPoints = []
                                      pointsCanvas.requestPaint()
@@ -2817,7 +3135,8 @@ Window {
                                          points: boundaryDraftPoints,
                                          color: "#FFB020",
                                          fillColor: "rgba(255,176,32,0.07)",
-                                         layer: "Boundary"
+                                         layer: "Boundary",
+                                         lineType: currentLineType
                                      })
                                      drawnShapes = nextShapes
                                      boundaryDraftPoints = []
@@ -2828,7 +3147,7 @@ Window {
 
                         onPressed: (mouse) => {
                             if (selectedTool === 0) {  // Select tool
-                                var pointIndex = findPointAtPosition(mouse.x, mouse.y)
+                                var pointIndex = findPointAtPosition(mouse.x, mouse.y, false)
                                 if (pointIndex >= 0) {
                                     // Point Selection
                                     if (mouse.modifiers & Qt.ControlModifier) { // Multi-select
@@ -2868,15 +3187,6 @@ Window {
                                 if (selectedTool === 1) { // Pan tool
                                     isPanning = true
                                     cursorShape = Qt.ClosedHandCursor
-                                } else if (selectedTool === 3 || selectedTool === 4 || selectedTool === 5) { // Drawing tools
-                                    var worldPos = screenToWorld(mouse.x, mouse.y)
-                                    drawingState = {
-                                        active: true,
-                                        startX: worldPos.x,
-                                        startY: worldPos.y,
-                                        currentX: worldPos.x,
-                                        currentY: worldPos.y
-                                    }
                                 }
                             }
                         }
@@ -2922,32 +3232,41 @@ Window {
                                 lastMouseX = mouse.x
                                 lastMouseY = mouse.y
                                 pointsCanvas.requestPaint()
-                            } else if (selectedTool === 10 && drawingState.active) {
-                                   // Snapping Logic for Preview
-                                   var snapIdx = findPointAtPosition(mouse.x, mouse.y)
-                                   var worldPos
-                                   if (snapIdx !== -1) {
-                                       var pt = importedPoints.get(snapIdx)
-                                       worldPos = { x: pt.x, y: pt.y }
-                                   } else {
-                                       worldPos = screenToWorld(mouse.x, mouse.y)
-                                   }
-                                   drawingState.currentX = worldPos.x
-                                   drawingState.currentY = worldPos.y
-                                   pointsCanvas.requestPaint()
-                                } else if (drawingState.active) {
-                                    // Other drawing tools (Line/Circle via Drag)
-                                var worldPos = screenToWorld(mouse.x, mouse.y)
-                                drawingState.currentX = worldPos.x
-                                drawingState.currentY = worldPos.y
+                            } else if (drawingState.active && (selectedTool === 3 || selectedTool === 4 || selectedTool === 5 || selectedTool === 10)) {
+                                // Snapping Logic for Preview
+                                var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                drawingState.currentX = snapWorld.x
+                                drawingState.currentY = snapWorld.y
+                                if (snapWorld.snapped) {
+                                    var snapScreen = worldToScreen(snapWorld.x, snapWorld.y)
+                                    lastMouseX = snapScreen.x
+                                    lastMouseY = snapScreen.y
+                                } else {
+                                    lastMouseX = mouse.x
+                                    lastMouseY = mouse.y
+                                }
                                 pointsCanvas.requestPaint() // Re-render to show preview
                             } else if (selectedTool === 11) {
-                                lastMouseX = mouse.x
-                                lastMouseY = mouse.y
+                                var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                if (snapWorld.snapped) {
+                                    var snapScreen = worldToScreen(snapWorld.x, snapWorld.y)
+                                    lastMouseX = snapScreen.x
+                                    lastMouseY = snapScreen.y
+                                } else {
+                                    lastMouseX = mouse.x
+                                    lastMouseY = mouse.y
+                                }
                                 if (measurePoints && measurePoints.length > 0) pointsCanvas.requestPaint()
                             } else if (selectedTool === 6 || selectedTool === 7 || selectedTool === 12) {
-                                lastMouseX = mouse.x
-                                lastMouseY = mouse.y
+                                var snapWorld = getWorldPosWithSnap(mouse.x, mouse.y)
+                                if (snapWorld.snapped) {
+                                    var snapScreen = worldToScreen(snapWorld.x, snapWorld.y)
+                                    lastMouseX = snapScreen.x
+                                    lastMouseY = snapScreen.y
+                                } else {
+                                    lastMouseX = mouse.x
+                                    lastMouseY = mouse.y
+                                }
 
                                 var hasDraft = (selectedTool === 6 && polylineDraftPoints && polylineDraftPoints.length > 0) ||
                                                (selectedTool === 7 && polygonDraftPoints && polygonDraftPoints.length > 0) ||
@@ -3012,36 +3331,6 @@ Window {
                                 // Points are added on click, not drag.
                                 drawingState = { active: false }
                                 pointsCanvas.requestPaint()
-                            } else if ((selectedTool === 3 || selectedTool === 4 || selectedTool === 5) && drawingState.active) {
-                                // Finish drawing shape
-                                var worldPos = screenToWorld(mouse.x, mouse.y)
-                                var shape = null
-
-                                var layerName = (activeLayer < layers.count) ? layers.get(activeLayer).layerName : "Layer"
-                                var layerColor = (activeLayer < layers.count) ? layers.get(activeLayer).layerColor : "white"
-
-                                if (selectedTool === 3) { // Line
-                                    shape = { type: "line", x1: drawingState.startX, y1: drawingState.startY, x2: worldPos.x, y2: worldPos.y, color: layerColor, layer: layerName }
-                                } else if (selectedTool === 4) { // Circle
-                                    var dx = worldPos.x - drawingState.startX
-                                    var dy = worldPos.y - drawingState.startY
-                                    var radius = Math.sqrt(dx*dx + dy*dy)
-                                    shape = { type: "circle", cx: drawingState.startX, cy: drawingState.startY, radius: radius, color: layerColor, layer: layerName }
-                                } else if (selectedTool === 5) { // Rectangle
-                                    var w = worldPos.x - drawingState.startX
-                                    var h = worldPos.y - drawingState.startY
-                                    shape = { type: "rectangle", x: drawingState.startX, y: drawingState.startY, w: w, h: h, color: layerColor, layer: layerName }
-                                }
-
-                                if (shape) {
-                                    pushUndoState()
-                                    var newShapes = drawnShapes
-                                    if (!newShapes) newShapes = []
-                                    newShapes.push(shape)
-                                    drawnShapes = newShapes
-                                    pointsCanvas.requestPaint()
-                                }
-                                drawingState = { active: false }
                             }
                         }
                     }
@@ -4207,7 +4496,8 @@ Window {
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 15
+            anchors.margins: 12
+            spacing: 12
 
             Text {
                 text: "Grid Resolution (meters):"
@@ -4346,14 +4636,15 @@ Window {
         property string label: ""
         Layout.columnSpan: 3
         Layout.fillWidth: true
-        height: 18
+        Layout.preferredHeight: root.toolSidebarHeaderHeight
+        height: root.toolSidebarHeaderHeight
         color: "transparent"
 
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: parent.label
             font.family: "Codec Pro"
-            font.pixelSize: 8
+            font.pixelSize: root.toolSidebarHeaderTextSize
             font.weight: Font.Bold
             color: textSecondary
         }
@@ -4366,7 +4657,7 @@ Window {
         signal clicked()
 
         Layout.fillWidth: true
-        Layout.preferredHeight: 44
+        Layout.preferredHeight: root.toolSidebarTileHeight
         radius: 4
         color: tileMa.containsMouse ? "#3A3A3A" : (isSelected ? "#4A4A4A" : "transparent")
         border.color: isSelected ? accentColor : "transparent"
@@ -4375,12 +4666,12 @@ Window {
 
         ColumnLayout {
             anchors.centerIn: parent
-            spacing: 2
+            spacing: root.toolSidebarTileHeight >= 38 ? 2 : 1
 
             Text {
                 text: toolData.icon || ""
                 font.family: "Font Awesome 5 Pro Solid"
-                font.pixelSize: 12
+                font.pixelSize: root.toolSidebarIconSize
                 color: "white"
                 Layout.alignment: Qt.AlignHCenter
             }
@@ -4388,8 +4679,10 @@ Window {
             Text {
                 text: toolData.name || ""
                 font.family: "Codec Pro"
-                font.pixelSize: 8
-                color: textSecondary
+                font.pixelSize: Math.max(8, root.toolSidebarLabelSize)
+                color: textPrimary
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignHCenter
                 Layout.alignment: Qt.AlignHCenter
             }
         }
@@ -4418,7 +4711,7 @@ Window {
         signal clicked()
 
         Layout.fillWidth: true
-        Layout.preferredHeight: 44
+        Layout.preferredHeight: root.toolSidebarTileHeight
         radius: 4
         color: toggleMa.containsMouse ? "#3A3A3A" : (active ? "#4A4A4A" : "transparent")
         border.color: active ? accentColor : "transparent"
@@ -4426,12 +4719,12 @@ Window {
 
         ColumnLayout {
             anchors.centerIn: parent
-            spacing: 2
+            spacing: root.toolSidebarTileHeight >= 38 ? 2 : 1
 
             Text {
                 text: icon
                 font.family: "Font Awesome 5 Pro Solid"
-                font.pixelSize: 12
+                font.pixelSize: root.toolSidebarIconSize
                 color: "white"
                 Layout.alignment: Qt.AlignHCenter
             }
@@ -4439,8 +4732,10 @@ Window {
             Text {
                 text: label
                 font.family: "Codec Pro"
-                font.pixelSize: 8
-                color: textSecondary
+                font.pixelSize: Math.max(8, root.toolSidebarLabelSize)
+                color: textPrimary
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignHCenter
                 Layout.alignment: Qt.AlignHCenter
             }
         }
@@ -4497,6 +4792,33 @@ Window {
         height: 320
         modal: true
         standardButtons: Dialog.Close
+        padding: 0
+
+        background: Rectangle {
+            color: darkCardBg
+            border.color: accentColor
+            border.width: 1
+            radius: 6
+        }
+
+        header: Rectangle {
+            height: 40
+            color: darkCardBg
+            radius: 6
+
+            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#3A3A3A" }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.leftMargin: 12
+                text: "Earthwork Volumes"
+                font.family: "Codec Pro"
+                font.pixelSize: 12
+                font.weight: Font.Bold
+                color: textPrimary
+            }
+        }
 
         property double cutVol: 0
         property double fillVol: 0
@@ -4541,14 +4863,15 @@ Window {
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 15
+            anchors.margins: 12
+            spacing: 12
 
             Text {
-                text: "Earthwork Volumes (" + volumeDialog.method + " Method)"
+                text: volumeDialog.method + " Method"
                 font.family: "Codec Pro"
-                font.pixelSize: 12
-                font.bold: true
-                color: textPrimary
+                font.pixelSize: 10
+                font.weight: Font.Medium
+                color: textSecondary
                 Layout.fillWidth: true
             }
 
@@ -4807,7 +5130,7 @@ Window {
             outY = baseY + dy
             outZ = baseZ + dz
 
-            bearingPreview.text = formatQuadrantBearing(az)
+            bearingPreview.text = formatDMS(az)
         }
 
         background: Rectangle {
