@@ -174,9 +174,9 @@ Item {
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
 
-                    property int columns: Math.max(1, Math.min(3, Math.floor(width / 320)))
+                    property int columns: Math.max(1, Math.min(3, Math.floor(width / 280)))
                     cellWidth: Math.floor(width / columns)
-                    cellHeight: 96
+                    cellHeight: 220
 
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AsNeeded
@@ -202,32 +202,33 @@ Item {
                         Rectangle {
                             id: tile
                             anchors.fill: parent
-                            anchors.margins: 10
-                            radius: 8
+                            anchors.margins: 12
+                            radius: 12
                             color: (isAvailable && mouseArea.containsMouse) ? Qt.lighter(cardColor, 1.02) : cardColor
                             border.color: (isAvailable && mouseArea.containsMouse) ? accentColor : borderColor
                             border.width: (isAvailable && mouseArea.containsMouse) ? 2 : 1
                             opacity: isAvailable ? 1.0 : 0.55
-                            scale: (isAvailable && mouseArea.pressed) ? 0.985 : 1.0
+                            scale: (isAvailable && mouseArea.pressed) ? 0.98 : 1.0
 
-                            Behavior on color { ColorAnimation { duration: 120 } }
-                            Behavior on opacity { NumberAnimation { duration: 120 } }
-                            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
-                            Behavior on border.color { ColorAnimation { duration: 120 } }
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                            Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
 
                             Rectangle {
                                 id: badge
                                 visible: badgeLabel.length > 0
                                 anchors.top: parent.top
                                 anchors.right: parent.right
-                                anchors.topMargin: 10
-                                anchors.rightMargin: 10
-                                height: 18
-                                width: badgeText.implicitWidth + 14
-                                radius: 9
-                                color: isRecommended ? Qt.lighter(accentColor, 1.92) : Qt.lighter(borderColor, 1.65)
+                                anchors.topMargin: 12
+                                anchors.rightMargin: 12
+                                height: 20
+                                width: badgeText.implicitWidth + 16
+                                radius: 10
+                                color: isRecommended ? Qt.lighter(accentColor, 1.92) : "#f1f5f9"
                                 border.color: isRecommended ? "transparent" : borderColor
                                 border.width: isRecommended ? 0 : 1
+                                z: 2
 
                                 Text {
                                     id: badgeText
@@ -235,34 +236,42 @@ Item {
                                     text: badgeLabel
                                     font.family: "Codec Pro"
                                     font.pixelSize: 10
-                                    font.weight: Font.Medium
+                                    font.weight: Font.Bold
                                     color: isRecommended ? accentColor : textSecondary
                                 }
                             }
 
-                            RowLayout {
+                            ColumnLayout {
                                 anchors.fill: parent
-                                anchors.margins: 16
-                                spacing: 12
+                                anchors.margins: 20
+                                spacing: 16
 
-                                Text {
-                                    text: modelData.icon
-                                    font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 18
-                                    color: (isAvailable && mouseArea.containsMouse) ? accentColor : textSecondary
-                                    Behavior on color { ColorAnimation { duration: 120 } }
+                                Item {
+                                    Layout.preferredHeight: 64
+                                    Layout.fillWidth: true
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData.icon
+                                        font.family: "Font Awesome 5 Pro Solid"
+                                        font.pixelSize: 42
+                                        color: (isAvailable && mouseArea.containsMouse) ? accentColor : textSecondary
+                                        Behavior on color { ColorAnimation { duration: 150 } }
+                                    }
                                 }
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
-                                    spacing: 2
+                                    Layout.fillHeight: true
+                                    spacing: 8
 
                                     Text {
                                         text: modelData.name
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 13
-                                        font.weight: Font.Medium
+                                        font.pixelSize: 16
+                                        font.weight: Font.Bold
                                         color: textPrimary
+                                        horizontalAlignment: Text.AlignHCenter
                                         elide: Text.ElideRight
                                         Layout.fillWidth: true
                                     }
@@ -270,25 +279,38 @@ Item {
                                     Text {
                                         text: modelData.desc
                                         font.family: "Codec Pro"
-                                        font.pixelSize: 11
+                                        font.pixelSize: 12
                                         color: textSecondary
+                                        horizontalAlignment: Text.AlignHCenter
+                                        wrapMode: Text.WordWrap
+                                        maximumLineCount: 2
                                         elide: Text.ElideRight
                                         Layout.fillWidth: true
-                                        maximumLineCount: 1
                                     }
                                 }
 
-                                Text {
-                                    text: isAvailable ? "\uf054" : "\uf023"
-                                    font.family: "Font Awesome 5 Pro Solid"
-                                    font.pixelSize: 10
-                                    color: textSecondary
-                                    opacity: (isAvailable && mouseArea.containsMouse) ? 1.0 : 0.6
-                                    transform: Translate {
-                                        x: (isAvailable && mouseArea.containsMouse) ? 2 : 0
-                                        Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                                Item {
+                                    Layout.preferredHeight: 24
+                                    Layout.fillWidth: true
+                                    visible: isAvailable
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "\uf061" // right arrow
+                                        font.family: "Font Awesome 5 Pro Solid"
+                                        font.pixelSize: 14
+                                        color: accentColor
+                                        opacity: mouseArea.containsMouse ? 1.0 : 0.0
+                                        scale: mouseArea.containsMouse ? 1.0 : 0.5
+                                        
+                                        Behavior on opacity { NumberAnimation { duration: 200 } }
+                                        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+
+                                        transform: Translate {
+                                            x: mouseArea.containsMouse ? 0 : -10
+                                            Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                                        }
                                     }
-                                    Behavior on opacity { NumberAnimation { duration: 120 } }
                                 }
                             }
 

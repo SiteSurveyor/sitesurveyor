@@ -168,6 +168,268 @@ Window {
     property real cursorX: 0
     property real cursorY: 0
 
+    // Command Console Properties
+    property int commandHistoryLimit: 120
+    property var commandInputHistory: []
+    property int commandInputHistoryIndex: -1
+    property bool commandConsoleCollapsed: false
+    property int commandConsoleWidth: 460
+    property int commandConsoleExpandedHeight: 150
+    property int commandConsoleCollapsedHeight: 30
+
+    ListModel {
+        id: commandHistoryModel
+    }
+
+    function appendCommandHistory(line, kind) {
+        commandHistoryModel.append({ line: line, kind: kind || "info" })
+        if (commandHistoryModel.count > commandHistoryLimit) {
+            commandHistoryModel.remove(0, commandHistoryModel.count - commandHistoryLimit)
+        }
+        Qt.callLater(function() {
+            if (commandHistoryView) commandHistoryView.positionViewAtEnd()
+        })
+    }
+
+    function clearCommandHistory() {
+        commandHistoryModel.clear()
+        appendCommandHistory("Command console cleared.", "info")
+    }
+
+    function executeCommand(raw) {
+        var input = (raw || "").trim()
+        if (input.length === 0) return
+
+        appendCommandHistory("Command: " + input, "prompt")
+
+        var inputHistory = commandInputHistory ? commandInputHistory.slice() : []
+        inputHistory.push(input)
+        commandInputHistory = inputHistory
+        commandInputHistoryIndex = inputHistory.length
+
+        var parts = input.split(/\s+/)
+        var cmd = parts[0].toUpperCase()
+        var args = parts.slice(1).join(" ").toUpperCase()
+
+        function setTool(id, label) {
+            selectedTool = id
+            if (id === 10 || id === 11) {
+                measurePoints = []
+                drawingState = { active: false }
+            }
+            appendCommandHistory(label + " tool active.", "info")
+        }
+
+        function reportToggle(label, enabled) {
+            appendCommandHistory(label + " " + (enabled ? "ON" : "OFF") + ".", "info")
+        }
+
+        switch (cmd) {
+        case "L":
+        case "LINE":
+            setTool(3, "Line")
+            return
+        case "C":
+        case "CIRCLE":
+            setTool(4, "Circle")
+            return
+        case "R":
+        case "RECT":
+        case "RECTANGLE":
+            setTool(5, "Rectangle")
+            return
+        case "P":
+        case "PLINE":
+        case "POLYLINE":
+            setTool(6, "Polyline")
+            return
+        case "O":
+        case "POLY":
+        case "POLYGON":
+            setTool(7, "Polygon")
+            return
+        case "B":
+        case "BOUNDARY":
+            setTool(12, "Boundary")
+            return
+        case "D":
+        case "DIST":
+        case "DISTANCE":
+            setTool(10, "Measure Distance")
+            return
+        case "A":
+        case "AREA":
+            setTool(11, "Measure Area")
+            return
+        case "H":
+        case "PAN":
+            setTool(1, "Pan")
+            return
+        case "SELECT":
+        case "V":
+            setTool(0, "Select")
+            return
+        case "ZOOM":
+        case "Z":
+            if (args === "" || args === "EXTENTS" || args === "E" || args === "FIT") {
+                recalculateBounds()
+                appendCommandHistory("Zoom extents.", "info")
+                return
+            }
+            if (args === "IN") {
+                handleToolClick({action: "zoomIn"})
+                appendCommandHistory("Zoom in.", "info")
+                return
+            }
+            if (args === "OUT") {
+                handleToolClick({action: "zoomOut"})
+                appendCommandHistory("Zoom out.", "info")
+                return
+            }
+            appendCommandHistory("Zoom options: IN, OUT, EXTENTS", "info")
+            return
+        case "ZOOMIN":
+            handleToolClick({action: "zoomIn"})
+            appendCommandHistory("Zoom in.", "info")
+            return
+        case "ZOOMOUT":
+            handleToolClick({action: "zoomOut"})
+            appendCommandHistory("Zoom out.", "info")
+            return
+        case "FIT":
+        case "ZE":
+        case "ZOOMEXTENTS":
+            recalculateBounds()
+            appendCommandHistory("Zoom extents.", "info")
+            return
+        case "GRID":
+            if (args === "ON") showGrid = true
+            else if (args === "OFF") showGrid = false
+            else showGrid = !showGrid
+            pointsCanvas.requestPaint()
+            reportToggle("Grid", showGrid)
+            return
+        case "SNAP":
+            if (args === "ON") snapEnabled = true
+            else if (args === "OFF") snapEnabled = false
+            else snapEnabled = !snapEnabled
+            reportToggle("Snap", snapEnabled)
+            return
+        case "LABELS":
+        case "LABEL":
+            if (args === "ON") showPointLabels = true
+            else if (args === "OFF") showPointLabels = false
+            else showPointLabels = !showPointLabels
+            pointsCanvas.requestPaint()
+            reportToggle("Labels", showPointLabels)
+            return
+        case "COGO":
+            openCogoFromSelection()
+            appendCommandHistory("COGO opened.", "info")
+            return
+        case "POINTS":
+        case "POINTMANAGER":
+            openPointManager()
+            appendCommandHistory("Point Manager opened.", "info")
+            return
+        case "ADDPOINT":
+        case "ADDPT":
+            selectedTool = 30
+            addPointDialog.clearFields()
+            addPointDialog.open()
+            appendCommandHistory("Add Point dialog opened.", "info")
+            return
+        case "IMPORT":
+            csvFileDialog.open()
+            appendCommandHistory("Import CSV opened.", "info")
+            return
+        case "EXPORT":
+            if (importedPoints.count > 0) {
+                exportCsvDialog.open()
+                appendCommandHistory("Export CSV opened.", "info")
+            } else {
+                appendCommandHistory("No points to export.", "error")
+            }
+            return
+        case "CRS":
+            crsDialog.open()
+            appendCommandHistory("CRS settings opened.", "info")
+            return
+        case "OPTIONS":
+            optionsDialog.open()
+            appendCommandHistory("CAD options opened.", "info")
+            return
+        case "DTM":
+            if (importedPoints.count === 0) {
+                appendCommandHistory("Import points before generating a DTM.", "error")
+                return
+            }
+            dtmDialog.open()
+            appendCommandHistory("DTM dialog opened.", "info")
+            return
+        case "CONTOURS":
+        case "CONT":
+            if (!dtmData) {
+                appendCommandHistory("Generate a DTM before contours.", "error")
+                return
+            }
+            contourDialog.open()
+            appendCommandHistory("Contours dialog opened.", "info")
+            return
+        case "TIN":
+            generateTIN()
+            appendCommandHistory("Generating TIN...", "info")
+            return
+        case "VOLUME":
+        case "VOL":
+            volumeDialog.open()
+            appendCommandHistory("Volume dialog opened.", "info")
+            return
+        case "OBJ":
+        case "EXPORTOBJ":
+            if (!dtmData) {
+                appendCommandHistory("Generate a DTM before exporting OBJ.", "error")
+                return
+            }
+            exportDTMObj()
+            appendCommandHistory("Exporting OBJ...", "info")
+            return
+        case "UNDO":
+        case "U":
+            if (undoStack && undoStack.length > 0) {
+                undo()
+                appendCommandHistory("Undo.", "info")
+            } else {
+                appendCommandHistory("Nothing to undo.", "error")
+            }
+            return
+        case "REDO":
+            if (redoStack && redoStack.length > 0) {
+                redo()
+                appendCommandHistory("Redo.", "info")
+            } else {
+                appendCommandHistory("Nothing to redo.", "error")
+            }
+            return
+        case "CLEAR":
+            clearTransientStates(true, true)
+            appendCommandHistory("Cleared drawings and measurements.", "info")
+            return
+        case "HELP":
+        case "?":
+            appendCommandHistory("Draw: LINE, CIRCLE, RECT, PLINE, POLYGON, BOUNDARY", "info")
+            appendCommandHistory("Survey: DIST, AREA, COGO, ADDPOINT, POINTS", "info")
+            appendCommandHistory("Earthwork: DTM, CONTOURS, TIN, VOLUME, OBJ", "info")
+            appendCommandHistory("View: ZOOM, FIT, GRID, SNAP, LABELS", "info")
+            appendCommandHistory("File/Settings: IMPORT, EXPORT, CRS, OPTIONS", "info")
+            appendCommandHistory("Edit: UNDO, REDO, CLEAR", "info")
+            return
+        default:
+            appendCommandHistory("Unknown command: " + input, "error")
+            return
+        }
+    }
+
     function toolNameForId(id) {
         switch (id) {
         case 0: return "Select"
@@ -238,14 +500,55 @@ Window {
         {action: "crs", icon: "\uf0ac", name: "CRS", tooltip: "Coordinate System"},
         {action: "options", icon: "\uf013", name: "Opts", tooltip: "CAD Options"}
     ]
+    property var dataTools: [
+        {action: "import", icon: "\uf56f", name: "Import", tooltip: "Import CSV Points"},
+        {action: "export", icon: "\uf560", name: "Export", tooltip: "Export CSV Points"}
+    ]
+
+    property var commandQuickList: [
+        { label: "LINE", command: "LINE", tooltip: "Line (L)" },
+        { label: "CIRCLE", command: "CIRCLE", tooltip: "Circle (C)" },
+        { label: "RECT", command: "RECT", tooltip: "Rectangle (R)" },
+        { label: "PLINE", command: "PLINE", tooltip: "Polyline (P)" },
+        { label: "POLY", command: "POLYGON", tooltip: "Polygon (O)" },
+        { label: "BOUND", command: "BOUNDARY", tooltip: "Boundary (B)" },
+        { separator: true },
+        { label: "DIST", command: "DIST", tooltip: "Measure Distance (D)" },
+        { label: "AREA", command: "AREA", tooltip: "Measure Area (A)" },
+        { label: "COGO", command: "COGO", tooltip: "COGO" },
+        { label: "ADDPT", command: "ADDPOINT", tooltip: "Add Control Point" },
+        { label: "POINTS", command: "POINTS", tooltip: "Point Manager" },
+        { separator: true },
+        { label: "DTM", command: "DTM", tooltip: "Generate DTM" },
+        { label: "CONT", command: "CONTOURS", tooltip: "Generate Contours" },
+        { label: "TIN", command: "TIN", tooltip: "Generate TIN" },
+        { label: "VOL", command: "VOLUME", tooltip: "Volume" },
+        { label: "OBJ", command: "EXPORTOBJ", tooltip: "Export OBJ" },
+        { separator: true },
+        { label: "ZOOM+", command: "ZOOMIN", tooltip: "Zoom In" },
+        { label: "ZOOM-", command: "ZOOMOUT", tooltip: "Zoom Out" },
+        { label: "FIT", command: "FIT", tooltip: "Zoom Extents" },
+        { label: "GRID", command: "GRID", tooltip: "Toggle Grid" },
+        { label: "SNAP", command: "SNAP", tooltip: "Toggle Snap" },
+        { label: "LABELS", command: "LABELS", tooltip: "Toggle Labels" },
+        { separator: true },
+        { label: "IMPORT", command: "IMPORT", tooltip: "Import CSV" },
+        { label: "EXPORT", command: "EXPORT", tooltip: "Export CSV" },
+        { label: "CRS", command: "CRS", tooltip: "CRS Settings" },
+        { label: "OPTIONS", command: "OPTIONS", tooltip: "CAD Options" },
+        { separator: true },
+        { label: "UNDO", command: "UNDO", tooltip: "Undo" },
+        { label: "REDO", command: "REDO", tooltip: "Redo" },
+        { label: "CLEAR", command: "CLEAR", tooltip: "Clear" }
+    ]
 
     // Tool sidebar layout sizing (fit without scrolling)
     property int toolSidebarColumns: 3
-    property int toolSidebarHeaderCount: 6
+    property int toolSidebarHeaderCount: 7
     property int toolSidebarEditCount: 3
     property int toolSidebarToggleCount: 3
     property int toolSidebarTileCount: navTools.length + drawTools.length + surveyTools.length +
-                                      earthworkTools.length + displayTools.length +
+                                      earthworkTools.length + displayTools.length + dataTools.length +
                                       toolSidebarEditCount + toolSidebarToggleCount
     property int toolSidebarTileRows: Math.ceil(toolSidebarTileCount / toolSidebarColumns)
     property int toolSidebarExtraRows: 1
@@ -440,6 +743,16 @@ Window {
         case "options":
             optionsDialog.open()
             return
+        case "import":
+            csvFileDialog.open()
+            return
+        case "export":
+            if (importedPoints.count > 0) {
+                exportCsvDialog.open()
+            } else {
+                errorBanner.show("No points to export.")
+            }
+            return
         case "clearDrafts":
             clearTransientStates(false)
             return
@@ -574,6 +887,9 @@ Window {
             if (processingOverlay) processingOverlay.isProcessing = false
             loadPointsFromDB()
             if (canvasMouseArea) canvasMouseArea.forceActiveFocus()
+        }
+        if (commandHistoryModel.count === 0) {
+            appendCommandHistory("Ready. Type HELP for available commands.", "info")
         }
     }
 
@@ -1415,7 +1731,10 @@ Window {
             Rectangle {
                 z: 5
                 Layout.fillWidth: true
-                Layout.preferredHeight: 32
+                Layout.preferredHeight: 0
+                Layout.minimumHeight: 0
+                Layout.maximumHeight: 0
+                visible: false
                 color: "#1A1A1A"
                 border.color: "#3A3A3A"
                 border.width: 1
@@ -1979,7 +2298,15 @@ Window {
             }
 
             // Divider
-            Rectangle { height: 1; Layout.fillWidth: true; color: "#3A3A3A" }
+            Rectangle {
+                height: 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: 0
+                Layout.minimumHeight: 0
+                Layout.maximumHeight: 0
+                visible: false
+                color: "#3A3A3A"
+            }
 
 
 
@@ -2173,6 +2500,16 @@ Window {
                                     }
                                 }
 
+                                ToolSectionHeader { label: "Data"; Layout.topMargin: 4 }
+
+                                Repeater {
+                                    model: dataTools
+                                    delegate: ToolTile {
+                                        toolData: modelData
+                                        onClicked: handleToolClick(toolData)
+                                    }
+                                }
+
                                 Item {
                                     Layout.columnSpan: 3
                                     Layout.preferredHeight: 1
@@ -2185,6 +2522,7 @@ Window {
 
                 // Canvas area
                 Rectangle {
+                    id: canvasArea
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     color: canvasBg
@@ -3344,6 +3682,284 @@ Window {
                         border.width: 1
                         z: 10 // Above canvas
                     }
+                    // Command Console (AutoCAD-style)
+                    Rectangle {
+                        id: commandConsole
+                        width: Math.min(commandConsoleWidth, canvasArea.width - 20)
+                        height: commandConsoleCollapsed ? commandConsoleCollapsedHeight : commandConsoleExpandedHeight
+                        anchors.left: parent.left
+                        anchors.bottom: parent.bottom
+                        anchors.leftMargin: 10
+                        anchors.bottomMargin: 10
+                        radius: 4
+                        color: "#1A1A1A"
+                        border.color: "#3A3A3A"
+                        border.width: 1
+                        z: 20
+                        clip: true
+
+                        Behavior on height {
+                            NumberAnimation { duration: 220; easing.type: Easing.InOutQuad }
+                        }
+
+                        Item {
+                            id: commandConsoleHeader
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            anchors.topMargin: 6
+                            height: 22
+
+                            RowLayout {
+                                anchors.fill: parent
+                                spacing: 8
+
+                                Rectangle {
+                                    width: 18
+                                    height: 18
+                                    radius: 3
+                                    color: collapseConsoleMa.containsMouse ? "#3A3A3A" : "#2A2A2A"
+                                    border.color: "#3A3A3A"
+                                    border.width: 1
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: commandConsoleCollapsed ? "\uf078" : "\uf077"
+                                        font.family: "Font Awesome 5 Pro Solid"
+                                        font.pixelSize: 8
+                                        color: textSecondary
+                                    }
+
+                                    MouseArea {
+                                        id: collapseConsoleMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: commandConsoleCollapsed = !commandConsoleCollapsed
+                                    }
+                                }
+
+                                Text {
+                                    text: "Command Console"
+                                    font.family: "Codec Pro"
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                    color: textPrimary
+                                    Layout.alignment: Qt.AlignVCenter
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                Rectangle {
+                                    width: 54
+                                    height: 18
+                                    radius: 3
+                                    color: clearConsoleMa.containsMouse ? accentColor : "#2A2A2A"
+                                    border.color: "#3A3A3A"
+                                    border.width: 1
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "Clear"
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 8
+                                        color: "white"
+                                    }
+
+                                    MouseArea {
+                                        id: clearConsoleMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: clearCommandHistory()
+                                    }
+                                }
+                            }
+                        }
+
+                        Item {
+                            id: commandConsoleBody
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: commandConsoleHeader.bottom
+                            anchors.bottom: parent.bottom
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            anchors.topMargin: commandConsoleCollapsed ? 0 : 6
+                            anchors.bottomMargin: commandConsoleCollapsed ? 0 : 8
+                            opacity: commandConsoleCollapsed ? 0 : 1
+                            enabled: !commandConsoleCollapsed
+                            clip: true
+
+                            Behavior on opacity {
+                                NumberAnimation { duration: 160; easing.type: Easing.OutQuad }
+                            }
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                spacing: 6
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 54
+                                    color: "#111111"
+                                    radius: 3
+                                    border.color: "#2F2F2F"
+                                    border.width: 1
+
+                                    ListView {
+                                        id: commandHistoryView
+                                        anchors.fill: parent
+                                        anchors.margins: 6
+                                        clip: true
+                                        model: commandHistoryModel
+                                        spacing: 2
+                                        ScrollBar.vertical: ScrollBar { }
+
+                                        delegate: Text {
+                                            text: line
+                                            color: kind === "error" ? "#E55353"
+                                                                 : (kind === "prompt" ? accentColor : textSecondary)
+                                            font.family: "Codec Pro"
+                                            font.pixelSize: 9
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 6
+
+                                    Text {
+                                        text: "Command:"
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 9
+                                        color: textPrimary
+                                        Layout.alignment: Qt.AlignVCenter
+                                    }
+
+                                    TextField {
+                                        id: commandInputField
+                                        Layout.fillWidth: true
+                                        placeholderText: "Type a command (HELP for list)"
+                                        color: "white"
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 10
+                                        selectByMouse: true
+
+                                        background: Rectangle {
+                                            color: "#0F0F0F"
+                                            radius: 2
+                                            border.color: commandInputField.activeFocus ? accentColor : "#3A3A3A"
+                                            border.width: 1
+                                        }
+
+                                        onAccepted: {
+                                            executeCommand(text)
+                                            text = ""
+                                        }
+
+                                        Keys.onPressed: (event) => {
+                                            if (event.key === Qt.Key_Up) {
+                                                if (commandInputHistory.length > 0) {
+                                                    if (commandInputHistoryIndex < 0) {
+                                                        commandInputHistoryIndex = commandInputHistory.length - 1
+                                                    } else if (commandInputHistoryIndex > 0) {
+                                                        commandInputHistoryIndex = commandInputHistoryIndex - 1
+                                                    }
+                                                    text = commandInputHistory[commandInputHistoryIndex] || ""
+                                                    cursorPosition = text.length
+                                                    event.accepted = true
+                                                }
+                                            } else if (event.key === Qt.Key_Down) {
+                                                if (commandInputHistory.length > 0) {
+                                                    if (commandInputHistoryIndex < commandInputHistory.length - 1) {
+                                                        commandInputHistoryIndex++
+                                                        text = commandInputHistory[commandInputHistoryIndex] || ""
+                                                    } else {
+                                                        commandInputHistoryIndex = commandInputHistory.length
+                                                        text = ""
+                                                    }
+                                                    cursorPosition = text.length
+                                                    event.accepted = true
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        width: 46
+                                        height: 22
+                                        radius: 3
+                                        color: runCommandMa.containsMouse ? accentColor : "#2A2A2A"
+                                        border.color: "#3A3A3A"
+                                        border.width: 1
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "Run"
+                                            font.family: "Codec Pro"
+                                            font.pixelSize: 9
+                                            color: "white"
+                                        }
+
+                                        MouseArea {
+                                            id: runCommandMa
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                executeCommand(commandInputField.text)
+                                                commandInputField.text = ""
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Flickable {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 20
+                                    contentWidth: quickCommandRow.width
+                                    contentHeight: quickCommandRow.height
+                                    clip: true
+
+                                    ScrollBar.horizontal: ScrollBar { }
+
+                                    Row {
+                                        id: quickCommandRow
+                                        spacing: 6
+
+                                        Repeater {
+                                            model: commandQuickList
+                                            delegate: Item {
+                                                width: modelData.separator ? 8 : chip.implicitWidth
+                                                height: 18
+
+                                                Rectangle {
+                                                    visible: modelData.separator === true
+                                                    width: 1
+                                                    height: 12
+                                                    color: "#3A3A3A"
+                                                    anchors.centerIn: parent
+                                                }
+
+                                                CommandChip {
+                                                    id: chip
+                                                    visible: !modelData.separator
+                                                    label: modelData.label
+                                                    command: modelData.command
+                                                    tooltip: modelData.tooltip
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     }
 
@@ -4168,6 +4784,7 @@ Window {
             }
         }
 
+
             // Bottom status bar
             Rectangle {
                 Layout.fillWidth: true
@@ -4752,6 +5369,42 @@ Window {
             visible: toggleMa.containsMouse
             text: tooltip
             delay: 500
+        }
+    }
+    component CommandChip : Rectangle {
+        property string label: ""
+        property string command: ""
+        property string tooltip: ""
+
+        implicitWidth: commandText.implicitWidth + 14
+        implicitHeight: 18
+        height: implicitHeight
+        radius: 3
+        color: chipMa.containsMouse ? "#3A3A3A" : "#2A2A2A"
+        border.color: "#4A4A4A"
+        border.width: 1
+
+        Text {
+            id: commandText
+            anchors.centerIn: parent
+            text: label
+            font.family: "Codec Pro"
+            font.pixelSize: 8
+            color: textPrimary
+        }
+
+        MouseArea {
+            id: chipMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: executeCommand(command)
+        }
+
+        ToolTip {
+            visible: chipMa.containsMouse && tooltip.length > 0
+            text: tooltip
+            delay: 400
         }
     }
 
