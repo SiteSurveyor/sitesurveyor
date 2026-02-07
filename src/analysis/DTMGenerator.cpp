@@ -7,6 +7,9 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDebug>
+#include <QUuid>
+#include <QStandardPaths>
+#include <QFileInfo>
 
 using namespace GDALHelpers;
 
@@ -47,10 +50,13 @@ bool DTMGenerator::createVRTFile(const QString &csvPath, const QString &vrtPath,
         return false;
     }
 
+    QString layerName = QFileInfo(csvPath).completeBaseName();
+
     QTextStream out(&vrtFile);
     out << "<OGRVRTDataSource>\n"
         << "    <OGRVRTLayer name=\"points\">\n"
         << "        <SrcDataSource>" << csvPath << "</SrcDataSource>\n"
+        << "        <SrcLayer>" << layerName << "</SrcLayer>\n"
         << "        <GeometryType>wkbPoint</GeometryType>\n"
         << "        <GeometryField encoding=\"PointFromColumns\" x=\"X\" y=\"Y\" z=\"Z\"/>\n"
         << "    </OGRVRTLayer>\n"
@@ -76,12 +82,17 @@ bool DTMGenerator::generate(const QVariantList &points,
         return false;
     }
 
+
+
     if (progressCallback) progressCallback(10);
 
     qDebug() << "Generating DTM with" << points.size() << "points, pixel size:" << pixelSize;
 
-    // Create temporary CSV file
-    QString tempCsvPath = outputPath + ".points.csv";
+    // Create unique temporary CSV file
+    QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    QString uniqueId = QUuid::createUuid().toString(QUuid::Id128);
+    QString tempCsvPath = tempDir + QString("/dtm_pts_%1.csv").arg(uniqueId);
+    
     QFile csvFile(tempCsvPath);
     if (!csvFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         errorOut = QString("Failed to create temporary CSV file: %1").arg(tempCsvPath);
@@ -120,6 +131,7 @@ bool DTMGenerator::generate(const QVariantList &points,
     // Create VRT file
     QString vrtPath = tempCsvPath + ".vrt";
     if (!createVRTFile(tempCsvPath, vrtPath, errorOut)) {
+        QFile::remove(tempCsvPath); // Cleanup CSV if VRT fails
         return false;
     }
 
@@ -130,6 +142,8 @@ bool DTMGenerator::generate(const QVariantList &points,
                                        GDAL_OF_VECTOR, nullptr, nullptr, nullptr));
     if (!srcDataset) {
         errorOut = "Failed to open point source for DTM generation";
+        QFile::remove(tempCsvPath);
+        QFile::remove(vrtPath);
         return false;
     }
 
@@ -165,6 +179,8 @@ bool DTMGenerator::generate(const QVariantList &points,
     GridOptionsGuard gridOptions(GDALGridOptionsNew(args.data(), nullptr));
     if (!gridOptions) {
         errorOut = "Failed to create GDAL grid options";
+        QFile::remove(tempCsvPath);
+        QFile::remove(vrtPath);
         return false;
     }
 
@@ -178,6 +194,8 @@ bool DTMGenerator::generate(const QVariantList &points,
 
     if (!dstDataset) {
         errorOut = "GDAL Grid failed to generate DTM";
+        QFile::remove(tempCsvPath);
+        QFile::remove(vrtPath);
         return false;
     }
 

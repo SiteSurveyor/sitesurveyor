@@ -132,6 +132,7 @@ Window {
     property var tinData: null    // TIN mesh data for visualization
     property bool showDTM: true   // Toggle DTM visualization
     property bool showTIN: true   // Toggle TIN visualization
+    property bool showContours: true // Toggle Contours visualization
     property bool showGrid: true  // Toggle Grid
     property bool showPointLabels: true // Toggle point labels
     property string gridMode: "Auto" // "Auto" or "Manual"
@@ -562,12 +563,14 @@ Window {
         var usable = toolSidebarGridHeight -
                      (toolSidebarHeaderCount * toolSidebarHeaderHeight) -
                      (toolSidebarRowSpacing * Math.max(0, totalRows - 1))
-        return Math.max(30, Math.min(44, Math.floor(usable / rows)))
+        return Math.max(24, Math.min(44, Math.floor(usable / rows)))
     }
     property int toolSidebarIconSize: toolSidebarTileHeight >= 40 ? 12 :
-                                      (toolSidebarTileHeight >= 34 ? 11 : 10)
+                                      (toolSidebarTileHeight >= 34 ? 11 :
+                                      (toolSidebarTileHeight >= 28 ? 10 : 9))
     property int toolSidebarLabelSize: toolSidebarTileHeight >= 42 ? 9 :
-                                       (toolSidebarTileHeight >= 36 ? 8 : 7)
+                                       (toolSidebarTileHeight >= 36 ? 8 :
+                                       (toolSidebarTileHeight >= 30 ? 7 : 7))
     property int toolSidebarHeaderTextSize: toolSidebarGridHeight < 620 ? 7 : 8
 
     function startProcessing(message) {
@@ -712,21 +715,36 @@ Window {
             }
             return
         case "dtm":
-            if (importedPoints.count === 0) {
-                errorBanner.show("Import points before generating a DTM.")
-                return
+            if (dtmData && dtmData.width > 0) {
+                showDTM = !showDTM
+                pointsCanvas.requestPaint()
+            } else {
+                if (importedPoints.count === 0) {
+                    errorBanner.show("Import points before generating a DTM.")
+                    return
+                }
+                dtmDialog.open()
             }
-            dtmDialog.open()
             return
         case "contours":
-            if (!dtmData) {
-                errorBanner.show("Generate a DTM before contours.")
-                return
+            if (contourLines && contourLines.length > 0) {
+                showContours = !showContours
+                pointsCanvas.requestPaint()
+            } else {
+                if (!dtmData) {
+                    errorBanner.show("Generate a DTM before contours.")
+                    return
+                }
+                contourDialog.open()
             }
-            contourDialog.open()
             return
         case "tin":
-            generateTIN()
+            if (tinData && tinData.success) {
+                showTIN = !showTIN
+                pointsCanvas.requestPaint()
+            } else {
+                generateTIN()
+            }
             return
         case "volume":
             volumeDialog.open()
@@ -2458,8 +2476,35 @@ Window {
 
                                 ToolSectionHeader { label: "Earthwork"; Layout.topMargin: 4 }
 
+                                ToggleToolTile {
+                                    icon: "\uf5fd"
+                                    label: "DTM"
+                                    tooltip: "Generate/Toggle DTM"
+                                    active: showDTM && dtmData !== null && dtmData.width > 0
+                                    onClicked: handleToolClick({action: "dtm"})
+                                }
+
+                                ToggleToolTile {
+                                    icon: "\uf5ee"
+                                    label: "Cont"
+                                    tooltip: "Generate/Toggle Contours"
+                                    active: showContours && contourLines.length > 0
+                                    onClicked: handleToolClick({action: "contours"})
+                                }
+
+                                ToggleToolTile {
+                                    icon: "\uf1b2"
+                                    label: "TIN"
+                                    tooltip: "Generate/Toggle TIN"
+                                    active: showTIN && tinData !== null && tinData.success
+                                    onClicked: handleToolClick({action: "tin"})
+                                }
+
                                 Repeater {
-                                    model: earthworkTools
+                                    model: [
+                                        {action: "volume", icon: "\uf547", name: "Vol", tooltip: "Calculate Volume"},
+                                        {action: "exportObj", icon: "\uf56d", name: "OBJ", tooltip: "Export DTM OBJ"}
+                                    ]
                                     delegate: ToolTile {
                                         toolData: modelData
                                         onClicked: handleToolClick(toolData)
@@ -2790,7 +2835,7 @@ Window {
 
                             // Draw imported points
                                 // Draw Contours
-                                if (contourLines && contourLines.length > 0) {
+                                if (showContours && contourLines && contourLines.length > 0) {
                                     ctx.lineWidth = 1.0
                                     ctx.strokeStyle = "orange"
                                     ctx.font = "10px sans-serif"
@@ -3949,9 +3994,9 @@ Window {
                                                 CommandChip {
                                                     id: chip
                                                     visible: !modelData.separator
-                                                    label: modelData.label
-                                                    command: modelData.command
-                                                    tooltip: modelData.tooltip
+                                                    label: modelData.label || ""
+                                                    command: modelData.command || ""
+                                                    tooltip: modelData.tooltip || ""
                                                 }
                                             }
                                         }

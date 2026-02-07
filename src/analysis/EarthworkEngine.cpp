@@ -10,6 +10,7 @@
 #include <QProcess>
 #include <QFileInfo>
 #include <QDebug>
+#include <QUuid>
 
 // GEOS Message Handlers
 void geosNotice(const char *fmt, ...) {
@@ -42,7 +43,8 @@ EarthworkEngine::EarthworkEngine(QObject *parent)
     initGEOS(geosNotice, geosError);
     GDALAllRegister();
     QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
-    m_dtmPath = tempDir + "/dtm.tif";
+    QString uuid = QUuid::createUuid().toString(QUuid::Id128);
+    m_dtmPath = tempDir + QString("/dtm_%1.tif").arg(uuid);
     PJ_INFO info = proj_info();
     qDebug() << "EarthworkEngine initialized. GDAL:" << GDALVersionInfo("RELEASE_NAME")
              << "| PROJ:" << info.version

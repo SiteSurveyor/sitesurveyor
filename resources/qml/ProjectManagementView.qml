@@ -1262,6 +1262,12 @@ Item {
                                         y: parent.height + 4
                                         
                                         MenuItem {
+                                            text: "Edit Details"
+                                            font.family: "Codec Pro"
+                                            onTriggered: openEditDialog(modelData)
+                                        }
+
+                                        MenuItem {
                                             text: "Active"
                                             font.family: "Codec Pro"
                                             onTriggered: {
@@ -1563,6 +1569,31 @@ Item {
                             horizontalAlignment: Text.AlignRight
                         }
                         
+                        // Edit button
+                        Rectangle {
+                            width: 24
+                            height: 24
+                            radius: 6
+                            color: listEditMa.containsMouse ? Qt.lighter(accentColor, 1.75) : "transparent"
+                            visible: !selectionMode
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: "\uf044"
+                                font.family: "Font Awesome 5 Pro Solid"
+                                font.pixelSize: 10
+                                color: listEditMa.containsMouse ? accentColor : textSecondary
+                            }
+                            
+                            MouseArea {
+                                id: listEditMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: openEditDialog(modelData)
+                            }
+                        }
+
                         // Delete button
                         Rectangle {
                             width: 24
@@ -2010,6 +2041,367 @@ Item {
         }
     }
 
+    // Edit Project Dialog
+    property int editProjectId: -1
+    
+    function openEditDialog(project) {
+        editProjectId = project.id
+        editNameField.text = project.name
+        editDescField.text = project.description || ""
+        // Map picker setup
+        if (editMapPicker) {
+            if (project.centerY !== 0 || project.centerX !== 0) {
+                editMapPicker.setLocationFromLo29(project.centerY, project.centerX)
+            } else {
+                editMapPicker.locationPicked = false
+                editMapPicker.selectedY = 0
+                editMapPicker.selectedX = 0
+            }
+        }
+        editProjectDialog.open()
+    }
+
+    Dialog {
+        id: editProjectDialog
+        anchors.centerIn: parent
+        width: Math.min(420, root.width - 40)
+        height: Math.min(480, root.height - 60)
+        modal: true
+        padding: 0
+        dim: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        
+        onOpened: {
+            editNameField.forceActiveFocus()
+        }
+        
+        Overlay.modal: Rectangle {
+            color: "#80000000"
+        }
+
+        background: Rectangle {
+            color: cardColor
+            radius: 6
+            border.color: borderColor
+            border.width: 1
+            opacity: editProjectDialog.visible ? 1 : 0
+            scale: editProjectDialog.visible ? 1 : 0.98
+            transformOrigin: Item.Center
+
+            Behavior on opacity { NumberAnimation { duration: 120 } }
+            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+        }
+
+        header: Rectangle {
+            color: cardColor
+            height: 48
+            radius: 6
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: borderColor
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 10
+                
+                // Icon
+                Rectangle {
+                    width: 32
+                    height: 32
+                    radius: 6
+                    color: Qt.lighter(accentColor, 1.9)
+                    
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\uf044" // Edit icon
+                        font.family: "Font Awesome 5 Pro Solid"
+                        font.pixelSize: 12
+                        color: accentColor
+                    }
+                }
+
+                Text {
+                    text: "Edit Project"
+                    font.family: "Codec Pro"
+                    font.pixelSize: 13
+                    font.weight: Font.Medium
+                    color: textPrimary
+                    Layout.fillWidth: true
+                }
+
+                Rectangle {
+                    width: 28
+                    height: 28
+                    radius: 14
+                    color: closeEditDialogMa.containsMouse ? bgColor : "transparent"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\uf00d"
+                        font.family: "Font Awesome 5 Pro Solid"
+                        font.pixelSize: 11
+                        color: textSecondary
+                    }
+
+                    MouseArea {
+                        id: closeEditDialogMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: editProjectDialog.close()
+                    }
+                }
+            }
+        }
+
+        contentItem: Flickable {
+            id: editFormFlickable
+            contentWidth: width
+            contentHeight: editFormColumn.height + 20
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
+            }
+
+            ColumnLayout {
+                id: editFormColumn
+                width: parent.width
+                spacing: 12
+
+                Item { height: 4 }
+
+                // Project Name Field
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    spacing: 4
+
+                    Text {
+                        text: "Name"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 10
+                        font.weight: Font.Medium
+                        color: textPrimary
+                    }
+
+                    TextField {
+                        id: editNameField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 34
+                        placeholderText: "Project Name"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 11
+                        color: textPrimary
+                        placeholderTextColor: textSecondary
+                        leftPadding: 10
+                        rightPadding: 10
+                        selectByMouse: true
+
+                        background: Rectangle {
+                            color: bgColor
+                            radius: 6
+                            border.color: editNameField.activeFocus ? accentColor : borderColor
+                            border.width: editNameField.activeFocus ? 2 : 1
+                        }
+                    }
+                }
+
+                // Description Field
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    spacing: 4
+
+                    Text {
+                        text: "Description"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 10
+                        font.weight: Font.Medium
+                        color: textPrimary
+                    }
+
+                    TextField {
+                        id: editDescField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 34
+                        placeholderText: "Project details"
+                        font.family: "Codec Pro"
+                        font.pixelSize: 11
+                        color: textPrimary
+                        placeholderTextColor: textSecondary
+                        leftPadding: 10
+                        rightPadding: 10
+                        selectByMouse: true
+
+                        background: Rectangle {
+                            color: bgColor
+                            radius: 6
+                            border.color: editDescField.activeFocus ? accentColor : borderColor
+                            border.width: editDescField.activeFocus ? 2 : 1
+                        }
+                    }
+                }
+
+                // Location section with Map Picker
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    spacing: 4
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "Location"
+                            font.family: "Codec Pro"
+                            font.pixelSize: 10
+                            font.weight: Font.Medium
+                            color: textPrimary
+                        }
+                        
+                        Item { Layout.fillWidth: true }
+
+                        Rectangle {
+                            width: editCrsLabel.width + 12
+                            height: 18
+                            radius: 9
+                            color: Qt.lighter(accentColor, 1.9)
+
+                            Text {
+                                id: editCrsLabel
+                                anchors.centerIn: parent
+                                text: "Lo29"
+                                font.family: "Codec Pro"
+                                font.pixelSize: 8
+                                font.weight: Font.Medium
+                                color: accentColor
+                            }
+                        }
+                    }
+
+                    MapPicker {
+                        id: editMapPicker
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 140
+                        accentColor: root.accentColor
+                        textPrimary: root.textPrimary
+                        textSecondary: root.textSecondary
+                        borderColor: root.borderColor
+                    }
+                }
+
+                Item { height: 4 }
+            }
+        }
+
+        footer: Item {
+            width: parent.width
+            height: 56
+            z: 100
+            
+            Rectangle {
+                anchors.fill: parent
+                color: bgColor
+                radius: 6
+                
+                // Top border line
+                Rectangle {
+                    anchors.top: parent.top
+                    width: parent.width
+                    height: 1
+                    color: borderColor
+                }
+                
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 10
+                    
+                    // Cancel button
+                    Button {
+                        text: "Cancel"
+                        Layout.preferredHeight: 34
+                        Layout.preferredWidth: implicitWidth + 20
+                        
+                        contentItem: Text {
+                            text: parent.text
+                            font.family: "Codec Pro"
+                            font.pixelSize: 11
+                            color: textSecondary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            color: parent.hovered ? Qt.darker(bgColor, 1.05) : "transparent"
+                            border.color: borderColor
+                            border.width: 1
+                            radius: 6
+                        }
+                        
+                        onClicked: editProjectDialog.close()
+                    }
+                    
+                    // Save button
+                    Button {
+                        id: saveBtn
+                        text: "Save Changes"
+                        Layout.preferredHeight: 34
+                        Layout.preferredWidth: implicitWidth + 20
+                        
+                        property bool canSave: editNameField.text.length > 0 &&
+                                               editDescField.text.length > 0
+                        
+                        contentItem: Text {
+                            text: saveBtn.text
+                            font.family: "Codec Pro"
+                            font.pixelSize: 11
+                            font.weight: Font.Medium
+                            color: "white"
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        background: Rectangle {
+                            color: saveBtn.canSave ?
+                                   (saveBtn.hovered ? Qt.darker(accentColor, 1.1) : accentColor) :
+                                   Qt.lighter(accentColor, 1.4)
+                            radius: 6
+                            
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
+                        
+                        onClicked: {
+                            if (saveBtn.canSave) {
+                                console.log("Updating project...")
+                                var result = Database.updateProject(
+                                    editProjectId,
+                                    editNameField.text,
+                                    editDescField.text,
+                                    editMapPicker.selectedY,
+                                    editMapPicker.selectedX
+                                )
+                                console.log("Update result:", result)
+                                editProjectDialog.close()
+                                refreshProjects()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
     // Delete Confirmation Dialog
         Dialog {
             id: deleteConfirmDialog
@@ -2293,4 +2685,5 @@ Item {
             }
         }
     }
+}
 }

@@ -713,6 +713,40 @@ bool DatabaseManager::updateProjectStatus(int projectId, const QString &status)
     return true;
 }
 
+bool DatabaseManager::updateProject(int projectId, const QString &name, const QString &description, double centerY, double centerX)
+{
+    QSqlQuery query(m_db);
+    query.prepare(R"(
+        UPDATE projects 
+        SET name = :name, 
+            description = :description, 
+            center_lat = :y, 
+            center_lon = :x,
+            updated_at = :timestamp 
+        WHERE id = :id
+    )");
+    query.bindValue(":name", name);
+    query.bindValue(":description", description);
+    query.bindValue(":y", centerY);
+    query.bindValue(":x", centerX);
+    query.bindValue(":timestamp", QDateTime::currentDateTime().toString(Qt::ISODate));
+    query.bindValue(":id", projectId);
+
+    if (!query.exec()) {
+        emit errorOccurred(tr("Failed to update project: %1").arg(query.lastError().text()));
+        return false;
+    }
+
+    if (m_currentProjectId == projectId) {
+        m_currentProjectName = name;
+        emit projectChanged();
+    } else {
+        emit projectChanged();
+    }
+
+    return true;
+}
+
 int DatabaseManager::getPointCountForProject(int projectId)
 {
     QSqlQuery query(m_db);

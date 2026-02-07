@@ -61,6 +61,53 @@ Item {
         };
     }
 
+    function setLocationFromLo29(y, x) {
+        var easting = y;
+        var northing = -x;
+        
+        var a = 6378137.0;
+        var f = 1/298.257223563;
+        var k0 = 1.0;
+        var lon0 = 29.0;
+        var lon0Rad = lon0 * Math.PI / 180.0;
+        
+        var e2 = 2*f - f*f;
+        var e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+        
+        var M = northing / k0;
+        var mu = M / (a * (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256));
+        
+        var phi1Rad = mu + (3*e1/2 - 27*e1*e1*e1/32) * Math.sin(2*mu) 
+                           + (21*e1*e1/16 - 55*e1*e1*e1*e1/32) * Math.sin(4*mu)
+                           + (151*e1*e1*e1/96) * Math.sin(6*mu);
+        
+        var N1 = a / Math.sqrt(1 - e2 * Math.sin(phi1Rad) * Math.sin(phi1Rad));
+        var T1 = Math.tan(phi1Rad) * Math.tan(phi1Rad);
+        var C1 = e2 / (1-e2) * Math.cos(phi1Rad) * Math.cos(phi1Rad);
+        var R1 = a * (1-e2) / Math.pow(1 - e2 * Math.sin(phi1Rad) * Math.sin(phi1Rad), 1.5);
+        var D = easting / (N1 * k0);
+        
+        var latRad = phi1Rad - (N1 * Math.tan(phi1Rad) / R1) * (D*D/2 - (5 + 3*T1 + 10*C1 - 4*C1*C1 - 9*e2/(1-e2)) * D*D*D*D/24
+                                + (61 + 90*T1 + 298*C1 + 45*T1*T1 - 252*e2/(1-e2) - 3*C1*C1) * D*D*D*D*D*D/720);
+                                
+        var lonRad = lon0Rad + (D - (1 + 2*T1 + C1) * D*D*D/6 + (5 - 2*C1 + 28*T1 - 3*C1*C1 + 8*e2/(1-e2) + 24*T1*T1) * D*D*D*D*D/120) / Math.cos(phi1Rad);
+        
+        selectedLatitude = latRad * 180.0 / Math.PI;
+        selectedLongitude = lonRad * 180.0 / Math.PI;
+        selectedY = y;
+        selectedX = x;
+        locationPicked = true;
+        
+        centerOnSelection();
+    }
+
+    function centerOnSelection() {
+        if (locationPicked) {
+             mapView.map.center = QtPositioning.coordinate(selectedLatitude, selectedLongitude)
+             mapView.map.zoomLevel = 16
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 8

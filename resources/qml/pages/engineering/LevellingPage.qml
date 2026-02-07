@@ -572,482 +572,498 @@ Item {
             border.color: borderColor
             border.width: 1
 
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: 0
-
-                // Table Header Bar
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 56
-                    color: "transparent"
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 20
-                        anchors.rightMargin: 20
-                        spacing: 12
-
-                        Text {
-                            text: "\uf0ce"
-                            font.family: "Font Awesome 5 Pro Solid"
-                            font.pixelSize: 12
-                            color: accentColor
-                        }
-
-                        ColumnLayout {
-                            spacing: 2
-                            Text {
-                                text: "Level Observations"
-                                font.family: "Codec Pro"
-                                font.pixelSize: 12
-                                font.weight: Font.DemiBold
-                                color: textPrimary
-                            }
-                            Text {
-                                text: levelModel.count + " readings"
-                                font.family: "Codec Pro"
-                                font.pixelSize: 9
-                                color: textSecondary
-                            }
-                        }
-
-                        Item { Layout.fillWidth: true }
-
-                        Button {
-                            height: 36
-                            contentItem: RowLayout {
-                                spacing: 6
-                                Text { text: "\uf067"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 9; color: "white" }
-                                Text { text: "Add Reading"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Medium; color: "white" }
-                            }
-                            background: Rectangle {
-                                color: parent.pressed ? Qt.darker(accentColor, 1.1) : (parent.hovered ? Qt.lighter(accentColor, 1.1) : accentColor)
-                                radius: 6
-                            }
-                            leftPadding: 14; rightPadding: 14
-                            onClicked: addRow()
-                        }
-
-                        Button {
-                            height: 36
-                            contentItem: RowLayout {
-                                spacing: 6
-                                Text { text: "\uf2f9"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 9; color: dangerColor }
-                                Text { text: "Reset"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
-                            }
-                            background: Rectangle {
-                                color: parent.pressed ? "#f0f0f0" : (parent.hovered ? "#f8f8f8" : "transparent")
-                                radius: 6
-                                border.color: borderColor
-                            }
-                            leftPadding: 12; rightPadding: 12
-                            onClicked: resetTable()
-                        }
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 1
-                    color: borderColor
-                }
-
-                // Table
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.margins: 16
-                    radius: 8
-                    border.color: borderColor
+                Flickable {
+                    id: tableFlickable
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    contentWidth: Math.max(width, 1100) // Ensure enough width for all columns
+                    contentHeight: height
                     clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    ScrollBar.horizontal: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                        active: tableFlickable.moving || tableFlickable.flicking
+                    }
 
                     ColumnLayout {
-                        anchors.fill: parent
+                        width: tableFlickable.contentWidth
+                        height: tableFlickable.height
                         spacing: 0
 
-                        // Column Headers
+                        // Table Header Bar
                         Rectangle {
                             Layout.fillWidth: true
-                            height: 44
-                            color: "#f8f9fb"
+                            height: 56
+                            color: "transparent"
 
                             RowLayout {
                                 anchors.fill: parent
+                                anchors.leftMargin: 20
+                                anchors.rightMargin: 20
+                                spacing: 12
+
+                                Text {
+                                    text: "\uf0ce"
+                                    font.family: "Font Awesome 5 Pro Solid"
+                                    font.pixelSize: 12
+                                    color: accentColor
+                                }
+
+                                ColumnLayout {
+                                    spacing: 2
+                                    Text {
+                                        text: "Level Observations"
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 12
+                                        font.weight: Font.DemiBold
+                                        color: textPrimary
+                                    }
+                                    Text {
+                                        text: levelModel.count + " readings"
+                                        font.family: "Codec Pro"
+                                        font.pixelSize: 9
+                                        color: textSecondary
+                                    }
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                Button {
+                                    height: 36
+                                    contentItem: RowLayout {
+                                        spacing: 6
+                                        Text { text: "\uf067"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 9; color: "white" }
+                                        Text { text: "Add Reading"; font.family: "Codec Pro"; font.pixelSize: 10; font.weight: Font.Medium; color: "white" }
+                                    }
+                                    background: Rectangle {
+                                        color: parent.pressed ? Qt.darker(accentColor, 1.1) : (parent.hovered ? Qt.lighter(accentColor, 1.1) : accentColor)
+                                        radius: 6
+                                    }
+                                    leftPadding: 14; rightPadding: 14
+                                    onClicked: addRow()
+                                }
+
+                                Button {
+                                    height: 36
+                                    contentItem: RowLayout {
+                                        spacing: 6
+                                        Text { text: "\uf2f9"; font.family: "Font Awesome 5 Pro Solid"; font.pixelSize: 9; color: dangerColor }
+                                        Text { text: "Reset"; font.family: "Codec Pro"; font.pixelSize: 10; color: textPrimary }
+                                    }
+                                    background: Rectangle {
+                                        color: parent.pressed ? "#f0f0f0" : (parent.hovered ? "#f8f8f8" : "transparent")
+                                        radius: 6
+                                        border.color: borderColor
+                                    }
+                                    leftPadding: 12; rightPadding: 12
+                                    onClicked: resetTable()
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 1
+                            color: borderColor
+                        }
+
+                        // Table
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Layout.margins: 16
+                            radius: 8
+                            border.color: borderColor
+                            clip: true
+
+                            ColumnLayout {
+                                anchors.fill: parent
                                 spacing: 0
 
-                                // Header cell component
-                                component HdrCell: Rectangle {
-                                    Layout.preferredWidth: cellWidth
-                                    Layout.fillWidth: fillW
-                                    Layout.fillHeight: true
-                                    color: "transparent"
-                                    property int cellWidth: 80
-                                    property bool fillW: false
-                                    property string label: ""
-                                    property string sublabel: ""
+                                // Column Headers
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 44
+                                    color: "#f8f9fb"
 
-                                    ColumnLayout {
-                                        anchors.centerIn: parent
-                                        spacing: 1
-                                        Text {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            text: label
-                                            font.family: "Codec Pro"
-                                            font.pixelSize: 9
-                                            font.weight: Font.DemiBold
-                                            color: textPrimary
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        spacing: 0
+
+                                        // Header cell component
+                                        component HdrCell: Rectangle {
+                                            Layout.preferredWidth: cellWidth
+                                            Layout.fillWidth: fillW
+                                            Layout.fillHeight: true
+                                            color: "transparent"
+                                            property int cellWidth: 80
+                                            property bool fillW: false
+                                            property string label: ""
+                                            property string sublabel: ""
+
+                                            ColumnLayout {
+                                                anchors.centerIn: parent
+                                                spacing: 1
+                                                Text {
+                                                    Layout.alignment: Qt.AlignHCenter
+                                                    text: label
+                                                    font.family: "Codec Pro"
+                                                    font.pixelSize: 9
+                                                    font.weight: Font.DemiBold
+                                                    color: textPrimary
+                                                }
+                                                Text {
+                                                    Layout.alignment: Qt.AlignHCenter
+                                                    visible: sublabel !== ""
+                                                    text: sublabel
+                                                    font.family: "Codec Pro"
+                                                    font.pixelSize: 8
+                                                    color: textSecondary
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                anchors.right: parent.right
+                                                width: 1
+                                                height: parent.height
+                                                color: borderColor
+                                            }
                                         }
-                                        Text {
-                                            Layout.alignment: Qt.AlignHCenter
-                                            visible: sublabel !== ""
-                                            text: sublabel
-                                            font.family: "Codec Pro"
-                                            font.pixelSize: 8
-                                            color: textSecondary
-                                        }
+
+                                        HdrCell { cellWidth: 45; label: "#" }
+                                        HdrCell { fillW: true; label: "Station" }
+                                        HdrCell { cellWidth: 75; label: "Dist"; sublabel: "(m)" }
+                                        HdrCell { cellWidth: 75; label: "BS" }
+                                        HdrCell { cellWidth: 75; label: "IS" }
+                                        HdrCell { cellWidth: 75; label: "FS" }
+                                        HdrCell { cellWidth: 75; visible: isRiseFallMethod; label: "Rise" }
+                                        HdrCell { cellWidth: 75; visible: isRiseFallMethod; label: "Fall" }
+                                        HdrCell { cellWidth: 80; visible: !isRiseFallMethod; label: "HPC" }
+                                        HdrCell { cellWidth: 90; label: "RL" }
+                                        HdrCell { cellWidth: 90; label: "Adj RL" }
+                                        HdrCell { fillW: true; label: "Remarks" }
+                                        Item { Layout.preferredWidth: 40 }
                                     }
 
                                     Rectangle {
-                                        anchors.right: parent.right
-                                        width: 1
-                                        height: parent.height
+                                        anchors.bottom: parent.bottom
+                                        width: parent.width
+                                        height: 1
                                         color: borderColor
                                     }
                                 }
 
-                                HdrCell { cellWidth: 45; label: "#" }
-                                HdrCell { fillW: true; label: "Station" }
-                                HdrCell { cellWidth: 75; label: "Dist"; sublabel: "(m)" }
-                                HdrCell { cellWidth: 75; label: "BS" }
-                                HdrCell { cellWidth: 75; label: "IS" }
-                                HdrCell { cellWidth: 75; label: "FS" }
-                                HdrCell { cellWidth: 75; visible: isRiseFallMethod; label: "Rise" }
-                                HdrCell { cellWidth: 75; visible: isRiseFallMethod; label: "Fall" }
-                                HdrCell { cellWidth: 80; visible: !isRiseFallMethod; label: "HPC" }
-                                HdrCell { cellWidth: 90; label: "RL" }
-                                HdrCell { cellWidth: 90; label: "Adj RL" }
-                                HdrCell { fillW: true; label: "Remarks" }
-                                Item { Layout.preferredWidth: 40 }
-                            }
+                                // Data Rows
+                                ListView {
+                                    id: tableView
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    clip: true
+                                    model: levelModel
+                                    boundsBehavior: Flickable.StopAtBounds
 
-                            Rectangle {
-                                anchors.bottom: parent.bottom
-                                width: parent.width
-                                height: 1
-                                color: borderColor
-                            }
-                        }
+                                    ScrollBar.vertical: ScrollBar {
+                                        policy: ScrollBar.AsNeeded
+                                    }
 
-                        // Data Rows
-                        ListView {
-                            id: tableView
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            clip: true
-                            model: levelModel
-                            boundsBehavior: Flickable.StopAtBounds
+                                    delegate: Rectangle {
+                                        width: tableView.width
+                                        height: 40
+                                        color: index % 2 === 0 ? "#ffffff" : "#fafbfc"
 
-                            ScrollBar.vertical: ScrollBar {
-                                policy: ScrollBar.AsNeeded
-                            }
+                                        Rectangle {
+                                            anchors.bottom: parent.bottom
+                                            width: parent.width
+                                            height: 1
+                                            color: "#f0f2f5"
+                                        }
 
-                            delegate: Rectangle {
-                                width: tableView.width
-                                height: 40
-                                color: index % 2 === 0 ? "#ffffff" : "#fafbfc"
-
-                                Rectangle {
-                                    anchors.bottom: parent.bottom
-                                    width: parent.width
-                                    height: 1
-                                    color: "#f0f2f5"
-                                }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    spacing: 0
-
-                                    // Data cell component
-                                    component DataCell: Rectangle {
-                                        Layout.preferredWidth: cellWidth
-                                        Layout.fillWidth: fillW
-                                        Layout.fillHeight: true
-                                        color: "transparent"
-                                        property int cellWidth: 80
-                                        property bool fillW: false
-                                        property alias value: cellInput.text
-                                        property bool readOnly: false
-                                        property bool highlight: false
-                                        property color textColor: textPrimary
-                                        property bool bold: false
-                                        signal edited(string newValue)
-
-                                        TextInput {
-                                            id: cellInput
+                                        RowLayout {
                                             anchors.fill: parent
-                                            anchors.margins: 4
-                                            horizontalAlignment: Text.AlignHCenter
-                                            verticalAlignment: Text.AlignVCenter
-                                            font.family: "Codec Pro"
-                                            font.pixelSize: 10
-                                            font.bold: bold
-                                            color: readOnly ? textSecondary : textColor
-                                            readOnly: parent.readOnly
-                                            selectByMouse: !readOnly
-                                            onEditingFinished: parent.edited(text)
+                                            spacing: 0
 
-                                            Rectangle {
-                                                visible: parent.activeFocus && !parent.readOnly
-                                                anchors.fill: parent
-                                                anchors.margins: -2
+                                            // Data cell component
+                                            component DataCell: Rectangle {
+                                                Layout.preferredWidth: cellWidth
+                                                Layout.fillWidth: fillW
+                                                Layout.fillHeight: true
                                                 color: "transparent"
-                                                border.color: accentColor
-                                                border.width: 2
-                                                radius: 4
-                                                z: -1
+                                                property int cellWidth: 80
+                                                property bool fillW: false
+                                                property alias value: cellInput.text
+                                                property bool readOnly: false
+                                                property bool highlight: false
+                                                property color textColor: textPrimary
+                                                property bool bold: false
+                                                signal edited(string newValue)
+
+                                                TextInput {
+                                                    id: cellInput
+                                                    anchors.fill: parent
+                                                    anchors.margins: 4
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    verticalAlignment: Text.AlignVCenter
+                                                    font.family: "Codec Pro"
+                                                    font.pixelSize: 10
+                                                    font.bold: bold
+                                                    color: readOnly ? textSecondary : textColor
+                                                    readOnly: parent.readOnly
+                                                    selectByMouse: !readOnly
+                                                    onEditingFinished: parent.edited(text)
+
+                                                    Rectangle {
+                                                        visible: parent.activeFocus && !parent.readOnly
+                                                        anchors.fill: parent
+                                                        anchors.margins: -2
+                                                        color: "transparent"
+                                                        border.color: accentColor
+                                                        border.width: 2
+                                                        radius: 4
+                                                        z: -1
+                                                    }
+                                                }
+
+                                                Rectangle {
+                                                    visible: highlight
+                                                    anchors.fill: parent
+                                                    color: Qt.lighter(accentColor, 1.95)
+                                                    z: -1
+                                                }
+
+                                                Rectangle {
+                                                    anchors.right: parent.right
+                                                    width: 1
+                                                    height: parent.height
+                                                    color: "#f0f2f5"
+                                                }
                                             }
-                                        }
 
-                                        Rectangle {
-                                            visible: highlight
-                                            anchors.fill: parent
-                                            color: Qt.lighter(accentColor, 1.95)
-                                            z: -1
-                                        }
+                                            // Row number
+                                            Rectangle {
+                                                Layout.preferredWidth: 45
+                                                Layout.fillHeight: true
+                                                color: "#f8f9fb"
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: index + 1
+                                                    font.family: "Codec Pro"
+                                                    font.pixelSize: 9
+                                                    color: textSecondary
+                                                }
+                                                Rectangle {
+                                                    anchors.right: parent.right
+                                                    width: 1; height: parent.height
+                                                    color: "#f0f2f5"
+                                                }
+                                            }
 
-                                        Rectangle {
-                                            anchors.right: parent.right
-                                            width: 1
-                                            height: parent.height
-                                            color: "#f0f2f5"
-                                        }
-                                    }
+                                            DataCell {
+                                                fillW: true
+                                                value: model.station
+                                                onEdited: levelModel.setProperty(index, "station", newValue)
+                                            }
+                                            DataCell {
+                                                cellWidth: 75
+                                                value: model.distance.toFixed(3)
+                                                onEdited: { levelModel.setProperty(index, "distance", parseFloat(newValue) || 0); calculateLevels() }
+                                            }
+                                            DataCell {
+                                                cellWidth: 75
+                                                value: model.bs === 0 ? "" : model.bs.toFixed(3)
+                                                textColor: successColor
+                                                onEdited: { levelModel.setProperty(index, "bs", parseFloat(newValue) || 0); calculateLevels() }
+                                            }
+                                            DataCell {
+                                                cellWidth: 75
+                                                value: model.is === 0 ? "" : model.is.toFixed(3)
+                                                onEdited: { levelModel.setProperty(index, "is", parseFloat(newValue) || 0); calculateLevels() }
+                                            }
+                                            DataCell {
+                                                cellWidth: 75
+                                                value: model.fs === 0 ? "" : model.fs.toFixed(3)
+                                                textColor: warningColor
+                                                onEdited: { levelModel.setProperty(index, "fs", parseFloat(newValue) || 0); calculateLevels() }
+                                            }
+                                            DataCell {
+                                                cellWidth: 75
+                                                visible: isRiseFallMethod
+                                                value: model.rise > 0 ? model.rise.toFixed(3) : ""
+                                                readOnly: true
+                                                textColor: successColor
+                                            }
+                                            DataCell {
+                                                cellWidth: 75
+                                                visible: isRiseFallMethod
+                                                value: model.fall > 0 ? model.fall.toFixed(3) : ""
+                                                readOnly: true
+                                                textColor: dangerColor
+                                            }
+                                            DataCell {
+                                                cellWidth: 80
+                                                visible: !isRiseFallMethod
+                                                value: model.hpc.toFixed(3)
+                                                readOnly: true
+                                            }
+                                            DataCell {
+                                                cellWidth: 90
+                                                value: model.rl.toFixed(3)
+                                                readOnly: true
+                                                bold: true
+                                                textColor: textPrimary
+                                            }
+                                            DataCell {
+                                                cellWidth: 90
+                                                value: model.adjRl.toFixed(3)
+                                                readOnly: true
+                                                bold: true
+                                                highlight: true
+                                                textColor: accentColor
+                                            }
+                                            DataCell {
+                                                fillW: true
+                                                value: model.remarks
+                                                onEdited: levelModel.setProperty(index, "remarks", newValue)
+                                            }
 
-                                    // Row number
-                                    Rectangle {
-                                        Layout.preferredWidth: 45
-                                        Layout.fillHeight: true
-                                        color: "#f8f9fb"
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: index + 1
-                                            font.family: "Codec Pro"
-                                            font.pixelSize: 9
-                                            color: textSecondary
-                                        }
-                                        Rectangle {
-                                            anchors.right: parent.right
-                                            width: 1; height: parent.height
-                                            color: "#f0f2f5"
-                                        }
-                                    }
+                                            // Delete button
+                                            Rectangle {
+                                                Layout.preferredWidth: 40
+                                                Layout.fillHeight: true
+                                                color: deleteMA.containsMouse ? Qt.lighter(dangerColor, 1.9) : "transparent"
 
-                                    DataCell {
-                                        fillW: true
-                                        value: model.station
-                                        onEdited: levelModel.setProperty(index, "station", newValue)
-                                    }
-                                    DataCell {
-                                        cellWidth: 75
-                                        value: model.distance.toFixed(3)
-                                        onEdited: { levelModel.setProperty(index, "distance", parseFloat(newValue) || 0); calculateLevels() }
-                                    }
-                                    DataCell {
-                                        cellWidth: 75
-                                        value: model.bs === 0 ? "" : model.bs.toFixed(3)
-                                        textColor: successColor
-                                        onEdited: { levelModel.setProperty(index, "bs", parseFloat(newValue) || 0); calculateLevels() }
-                                    }
-                                    DataCell {
-                                        cellWidth: 75
-                                        value: model.is === 0 ? "" : model.is.toFixed(3)
-                                        onEdited: { levelModel.setProperty(index, "is", parseFloat(newValue) || 0); calculateLevels() }
-                                    }
-                                    DataCell {
-                                        cellWidth: 75
-                                        value: model.fs === 0 ? "" : model.fs.toFixed(3)
-                                        textColor: warningColor
-                                        onEdited: { levelModel.setProperty(index, "fs", parseFloat(newValue) || 0); calculateLevels() }
-                                    }
-                                    DataCell {
-                                        cellWidth: 75
-                                        visible: isRiseFallMethod
-                                        value: model.rise > 0 ? model.rise.toFixed(3) : ""
-                                        readOnly: true
-                                        textColor: successColor
-                                    }
-                                    DataCell {
-                                        cellWidth: 75
-                                        visible: isRiseFallMethod
-                                        value: model.fall > 0 ? model.fall.toFixed(3) : ""
-                                        readOnly: true
-                                        textColor: dangerColor
-                                    }
-                                    DataCell {
-                                        cellWidth: 80
-                                        visible: !isRiseFallMethod
-                                        value: model.hpc.toFixed(3)
-                                        readOnly: true
-                                    }
-                                    DataCell {
-                                        cellWidth: 90
-                                        value: model.rl.toFixed(3)
-                                        readOnly: true
-                                        bold: true
-                                        textColor: textPrimary
-                                    }
-                                    DataCell {
-                                        cellWidth: 90
-                                        value: model.adjRl.toFixed(3)
-                                        readOnly: true
-                                        bold: true
-                                        highlight: true
-                                        textColor: accentColor
-                                    }
-                                    DataCell {
-                                        fillW: true
-                                        value: model.remarks
-                                        onEdited: levelModel.setProperty(index, "remarks", newValue)
-                                    }
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: "\uf1f8"
+                                                    font.family: "Font Awesome 5 Pro Solid"
+                                                    font.pixelSize: 10
+                                                    color: deleteMA.containsMouse ? dangerColor : textSecondary
+                                                }
 
-                                    // Delete button
-                                    Rectangle {
-                                        Layout.preferredWidth: 40
-                                        Layout.fillHeight: true
-                                        color: deleteMA.containsMouse ? Qt.lighter(dangerColor, 1.9) : "transparent"
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "\uf1f8"
-                                            font.family: "Font Awesome 5 Pro Solid"
-                                            font.pixelSize: 10
-                                            color: deleteMA.containsMouse ? dangerColor : textSecondary
-                                        }
-
-                                        MouseArea {
-                                            id: deleteMA
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                if (levelModel.count > 1) {
-                                                    levelModel.remove(index)
-                                                    calculateLevels()
+                                                MouseArea {
+                                                    id: deleteMA
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        if (levelModel.count > 1) {
+                                                            levelModel.remove(index)
+                                                            calculateLevels()
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
-                            }
-                        }
 
-                        // Footer Totals
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 44
-                            color: "#f0f4f8"
-
-                            Rectangle {
-                                anchors.top: parent.top
-                                width: parent.width
-                                height: 1
-                                color: borderColor
-                            }
-
-                            RowLayout {
-                                anchors.fill: parent
-                                spacing: 0
-
+                                // Footer Totals
                                 Rectangle {
-                                    Layout.preferredWidth: 45
-                                    Layout.fillHeight: true
-                                    color: "transparent"
-                                }
-
-                                Item {
                                     Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    Text {
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: 10
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: "TOTALS"
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 9
-                                        font.weight: Font.Bold
-                                        color: textPrimary
-                                    }
-                                }
+                                    height: 44
+                                    color: "#f0f4f8"
 
-                                Item {
-                                    Layout.preferredWidth: 75
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: totalDistance.toFixed(3)
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 10
-                                        font.bold: true
-                                        color: textPrimary
+                                    Rectangle {
+                                        anchors.top: parent.top
+                                        width: parent.width
+                                        height: 1
+                                        color: borderColor
+                                    }
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        spacing: 0
+
+                                        Rectangle {
+                                            Layout.preferredWidth: 45
+                                            Layout.fillHeight: true
+                                            color: "transparent"
+                                        }
+
+                                        Item {
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            Text {
+                                                anchors.right: parent.right
+                                                anchors.rightMargin: 10
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: "TOTALS"
+                                                font.family: "Codec Pro"
+                                                font.pixelSize: 9
+                                                font.weight: Font.Bold
+                                                color: textPrimary
+                                            }
+                                        }
+
+                                        Item {
+                                            Layout.preferredWidth: 75
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: totalDistance.toFixed(3)
+                                                font.family: "Codec Pro"
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                                color: textPrimary
+                                            }
+                                        }
+                                        Item {
+                                            Layout.preferredWidth: 75
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: totalBS.toFixed(3)
+                                                font.family: "Codec Pro"
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                                color: successColor
+                                            }
+                                        }
+                                        Item { Layout.preferredWidth: 75 }
+                                        Item {
+                                            Layout.preferredWidth: 75
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: totalFS.toFixed(3)
+                                                font.family: "Codec Pro"
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                                color: warningColor
+                                            }
+                                        }
+                                        Item {
+                                            Layout.preferredWidth: 75
+                                            visible: isRiseFallMethod
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: totalRise.toFixed(3)
+                                                font.family: "Codec Pro"
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                                color: successColor
+                                            }
+                                        }
+                                        Item {
+                                            Layout.preferredWidth: 75
+                                            visible: isRiseFallMethod
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: totalFall.toFixed(3)
+                                                font.family: "Codec Pro"
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                                color: dangerColor
+                                            }
+                                        }
+                                        Item { Layout.preferredWidth: 80; visible: !isRiseFallMethod }
+                                        Item { Layout.preferredWidth: 90 }
+                                        Item { Layout.preferredWidth: 90 }
+                                        Item { Layout.fillWidth: true }
+                                        Item { Layout.preferredWidth: 40 }
                                     }
                                 }
-                                Item {
-                                    Layout.preferredWidth: 75
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: totalBS.toFixed(3)
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 10
-                                        font.bold: true
-                                        color: successColor
-                                    }
-                                }
-                                Item { Layout.preferredWidth: 75 }
-                                Item {
-                                    Layout.preferredWidth: 75
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: totalFS.toFixed(3)
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 10
-                                        font.bold: true
-                                        color: warningColor
-                                    }
-                                }
-                                Item {
-                                    Layout.preferredWidth: 75
-                                    visible: isRiseFallMethod
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: totalRise.toFixed(3)
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 10
-                                        font.bold: true
-                                        color: successColor
-                                    }
-                                }
-                                Item {
-                                    Layout.preferredWidth: 75
-                                    visible: isRiseFallMethod
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: totalFall.toFixed(3)
-                                        font.family: "Codec Pro"
-                                        font.pixelSize: 10
-                                        font.bold: true
-                                        color: dangerColor
-                                    }
-                                }
-                                Item { Layout.preferredWidth: 80; visible: !isRiseFallMethod }
-                                Item { Layout.preferredWidth: 90 }
-                                Item { Layout.preferredWidth: 90 }
-                                Item { Layout.fillWidth: true }
-                                Item { Layout.preferredWidth: 40 }
                             }
                         }
                     }
                 }
-            }
         }
     }
 }

@@ -5,5 +5,5 @@
 export QML_XHR_ALLOW_FILE_READ=1
 
 # Run the application
-cd /home/project3/sitesurveyor/build
-./SiteSurveyor "$@"
+cd /home/console2/sitesurveyor/build
+./linux-debug/SiteSurveyor "$@"

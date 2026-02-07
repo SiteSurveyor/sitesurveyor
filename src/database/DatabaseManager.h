@@ -55,6 +55,7 @@ public:
     Q_INVOKABLE bool deleteProject(int projectId);
     Q_INVOKABLE bool deleteProjects(const QVariantList &projectIds);
     Q_INVOKABLE bool updateProjectStatus(int projectId, const QString &status);
+    Q_INVOKABLE bool updateProject(int projectId, const QString &name, const QString &description, double centerY, double centerX);
     Q_INVOKABLE int getPointCountForProject(int projectId);
     Q_INVOKABLE QString currentProject() const;
     Q_INVOKABLE QVariantMap currentProjectDetails() const;
