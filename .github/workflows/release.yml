@@ -1,0 +1,329 @@
+name: Release Build
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  QT_VERSION: '6.6.0'
+
+jobs:
+  # Linux Build - AppImage with all dependencies
+  build-linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'linux'
+        target: 'desktop'
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libgl1-mesa-dev \
+          libgdal-dev \
+          libgeos-dev \
+          libproj-dev \
+          libxcb-cursor0 \
+          libfuse2 \
+          patchelf \
+          imagemagick
+
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/usr
+
+    - name: Build
+      run: cmake --build build --parallel
+
+    - name: Get Version
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+        else
+          VERSION="1.0.8-dev"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Download linuxdeploy
+      run: |
+        wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+        wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+        chmod +x linuxdeploy*.AppImage
+
+    - name: Create AppImage with all dependencies
+      run: |
+        # Create AppDir structure
+        mkdir -p AppDir/usr/bin
+        mkdir -p AppDir/usr/lib
+        mkdir -p AppDir/usr/share/applications
+        mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+        mkdir -p AppDir/usr/share/gdal
+        mkdir -p AppDir/usr/share/proj
+
+        # Copy binary
+        cp build/bin/SiteSurveyor AppDir/usr/bin/
+
+        # Resize and copy icon (must be exactly 256x256)
+        convert resources/logo/SiteSurveyor.png -resize 256x256 AppDir/usr/share/icons/hicolor/256x256/apps/sitesurveyor.png
+
+        # Create desktop file
+        cat > AppDir/usr/share/applications/sitesurveyor.desktop << 'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=SiteSurveyor
+        GenericName=Geomatics Software
+        Comment=Professional Geomatics Software
+        Exec=SiteSurveyor
+        Icon=sitesurveyor
+        Categories=Science;Engineering;Geography;
+        Terminal=false
+        EOF
+
+        # Copy desktop file to AppDir root
+        cp AppDir/usr/share/applications/sitesurveyor.desktop AppDir/
+
+        # Bundle GDAL, GEOS, PROJ libraries
+        echo "Bundling GIS libraries..."
+
+        # Copy GDAL and its dependencies
+        for lib in libgdal libgeos_c libgeos libproj libsqlite3 libspatialite libfreexl libxml2 libjson-c libnetcdf libhdf5 libcurl libssl libcrypto libz libtiff libjpeg libpng libwebp libopenjp2 libpoppler libgeotiff; do
+          find /usr/lib/x86_64-linux-gnu -name "${lib}*.so*" -exec cp -L {} AppDir/usr/lib/ \; 2>/dev/null || true
+          find /lib/x86_64-linux-gnu -name "${lib}*.so*" -exec cp -L {} AppDir/usr/lib/ \; 2>/dev/null || true
+        done
+
+        # Copy GDAL data files
+        if [ -d /usr/share/gdal ]; then
+          cp -r /usr/share/gdal/* AppDir/usr/share/gdal/ 2>/dev/null || true
+        fi
+
+        # Copy PROJ data files
+        if [ -d /usr/share/proj ]; then
+          cp -r /usr/share/proj/* AppDir/usr/share/proj/ 2>/dev/null || true
+        fi
+
+        # Create wrapper script that sets environment
+        mv AppDir/usr/bin/SiteSurveyor AppDir/usr/bin/SiteSurveyor.bin
+        cat > AppDir/usr/bin/SiteSurveyor << 'WRAPPER'
+        #!/bin/bash
+        HERE="$(dirname "$(readlink -f "${0}")")"
+        export LD_LIBRARY_PATH="${HERE}/../lib:${LD_LIBRARY_PATH}"
+        export GDAL_DATA="${HERE}/../share/gdal"
+        export PROJ_LIB="${HERE}/../share/proj"
+        exec "${HERE}/SiteSurveyor.bin" "$@"
+        WRAPPER
+        chmod +x AppDir/usr/bin/SiteSurveyor
+
+        # Run linuxdeploy to bundle Qt (but don't create AppImage yet)
+        export VERSION="${{ steps.version.outputs.version }}"
+        export EXTRA_QT_PLUGINS="iconengines;imageformats;platforms;platformthemes;styles"
+
+        ./linuxdeploy-x86_64.AppImage \
+          --appdir AppDir \
+          --plugin qt \
+          --desktop-file AppDir/sitesurveyor.desktop \
+          --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/sitesurveyor.png
+
+        # Download appimagetool and create AppImage with gzip compression
+        wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+
+        # Create AppImage with gzip compression for maximum compatibility
+        ARCH=x86_64 ./appimagetool-x86_64.AppImage --comp gzip AppDir SiteSurveyor-${{ steps.version.outputs.version }}-linux-x86_64.AppImage
+
+    - name: Upload Linux Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-appimage
+        path: SiteSurveyor-*.AppImage
+
+  # Windows Build - ZIP with all dependencies
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install Qt (MSVC)
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{ env.QT_VERSION }}
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_msvc2019_64'
+
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Install Ninja
+      run: choco install ninja
+
+    - name: Clone vcpkg
+      run: git clone https://github.com/microsoft/vcpkg.git
+
+    - name: Bootstrap vcpkg
+      run: .\vcpkg\bootstrap-vcpkg.bat
+      shell: cmd
+
+    - name: Restore vcpkg cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          vcpkg/installed
+          vcpkg/packages
+        key: ${{ runner.os }}-vcpkg-release-v4-${{ hashFiles('CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-release-v4-
+
+    - name: Install vcpkg dependencies
+      run: .\vcpkg\vcpkg install gdal:x64-windows geos:x64-windows proj:x64-windows --recurse
+      shell: cmd
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G "Ninja" `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_TOOLCHAIN_FILE="$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+          -DVCPKG_TARGET_TRIPLET=x64-windows
+      shell: pwsh
+
+    - name: Build
+      run: cmake --build build --parallel
+
+    - name: Create Distribution with all dependencies
+      run: |
+        New-Item -ItemType Directory -Force -Path dist/SiteSurveyor
+        New-Item -ItemType Directory -Force -Path dist/SiteSurveyor/gdal-data
+        New-Item -ItemType Directory -Force -Path dist/SiteSurveyor/proj-data
+
+        # Copy binary
+        Copy-Item build/bin/SiteSurveyor.exe dist/SiteSurveyor/
+
+        # Run windeployqt to bundle Qt
+        & "$env:Qt6_DIR/bin/windeployqt.exe" `
+          --release `
+          --no-translations `
+          --no-system-d3d-compiler `
+          --no-opengl-sw `
+          dist/SiteSurveyor/SiteSurveyor.exe
+
+        # Copy ALL DLLs from vcpkg (GDAL, GEOS, PROJ and their dependencies)
+        Copy-Item vcpkg/installed/x64-windows/bin/*.dll dist/SiteSurveyor/ -Force
+
+        # Copy GDAL data files
+        if (Test-Path vcpkg/installed/x64-windows/share/gdal) {
+          Copy-Item vcpkg/installed/x64-windows/share/gdal/* dist/SiteSurveyor/gdal-data/ -Recurse -Force
+        }
+
+        # Copy PROJ data files
+        if (Test-Path vcpkg/installed/x64-windows/share/proj) {
+          Copy-Item vcpkg/installed/x64-windows/share/proj/* dist/SiteSurveyor/proj-data/ -Recurse -Force
+        }
+        if (Test-Path vcpkg/installed/x64-windows/share/proj4) {
+          Copy-Item vcpkg/installed/x64-windows/share/proj4/* dist/SiteSurveyor/proj-data/ -Recurse -Force
+        }
+
+        # Copy docs
+        Copy-Item README.md dist/SiteSurveyor/ -ErrorAction SilentlyContinue
+        Copy-Item LICENSE dist/SiteSurveyor/ -ErrorAction SilentlyContinue
+
+        # List all files for verification
+        Write-Host "Distribution contents:"
+        Get-ChildItem dist/SiteSurveyor/ -Recurse | Format-Table Name, Length
+      shell: pwsh
+
+    - name: Create ZIP
+      run: |
+        $version = "${{ github.ref_name }}".TrimStart("v")
+        if ("${{ github.ref_type }}" -eq "branch") { $version = "dev" }
+        Compress-Archive -Path dist/SiteSurveyor -DestinationPath SiteSurveyor-$version-windows-x64.zip
+      shell: pwsh
+
+    - name: Upload Windows Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-zip
+        path: SiteSurveyor-*.zip
+
+  # Create Release (Only on Tag)
+  release:
+    needs: [build-linux, build-windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        merge-multiple: true
+
+    - name: List artifacts
+      run: ls -la
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: SiteSurveyor ${{ github.ref_name }}
+        body: |
+          ## SiteSurveyor ${{ github.ref_name }}
+
+          **Developed by Eineva Incorporated**
+
+          ### Downloads
+
+          | Platform | File | Installation |
+          |----------|------|--------------|
+          | **Windows** | `.zip` | Extract and run `SiteSurveyor.exe` |
+          | **Linux** | `.AppImage` | Make executable and run |
+
+          ### Windows Installation
+
+          1. Download the `.zip` file
+          2. Extract to any folder
+          3. Run `SiteSurveyor.exe`
+
+          **All dependencies included - no additional installation required!**
+
+          ### Linux Installation
+
+          ```bash
+          chmod +x SiteSurveyor-*.AppImage
+          ./SiteSurveyor-*.AppImage
+          ```
+
+          **All dependencies included - no additional installation required!**
+
+          ### Requirements
+          - 64-bit operating system
+          - OpenGL 3.3+ support
+        files: |
+          SiteSurveyor-*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

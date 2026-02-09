@@ -1,0 +1,43 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/Main.qml</file>
+        <file>qml/DashboardView.qml</file>
+        <file>qml/DisciplineSelectionView.qml</file>
+        <file>qml/ProjectManagementView.qml</file>
+        <file>qml/pages/engineering/EngineeringDashboard.qml</file>
+        <file>qml/pages/engineering/PersonnelPage.qml</file>
+        <file>qml/pages/engineering/InstrumentsPage.qml</file>
+        <file>qml/pages/engineering/SettingsPage.qml</file>
+        <file>qml/pages/engineering/ReportPage.qml</file>
+        <file>qml/pages/engineering/TraversingPage.qml</file>
+        <file>qml/pages/engineering/LevellingPage.qml</file>
+        <file>qml/pages/engineering/CADPage.qml</file>
+        <file>qml/pages/engineering/CADOptionsDialog.qml</file>
+        <file>qml/pages/engineering/AddPointDialog.qml</file>
+        <file>qml/pages/engineering/PointManagerDialog.qml</file>
+        <file>qml/pages/engineering/components/SideBar.qml</file>
+        <file>qml/pages/engineering/components/Header.qml</file>
+        <file>qml/pages/engineering/components/StatTile.qml</file>
+        <file>qml/pages/engineering/components/MapCanvas.qml</file>
+        <file>qml/components/CircularProgressBar.qml</file>
+        <file>qml/components/RightPane.qml</file>
+        <file>qml/components/Switch.qml</file>
+        <file>qml/components/RightPaneLightSwitchComponent.qml</file>
+        <file>qml/components/MiddlePane.qml</file>
+        <file>qml/components/LeftPane.qml</file>
+        <file>qml/components/MiddlePaneWidget.qml</file>
+        <file>qml/components/Progressbar.qml</file>
+        <file>qml/components/IconLabel.qml</file>
+        <file>qml/components/MapPicker.qml</file>
+        <file>assets/fonts/fontawesome.otf</file>
+        <file>assets/fonts/CodecPro-Regular.ttf</file>
+        <file>assets/fonts/CodecPro-Italic.ttf</file>
+        <file>qml/SplashScreen.qml</file>
+        <file>logo/SiteSurveyor.png</file>
+        <file>qml/components/DTM3DViewer.qml</file>
+        <file>qml/components/ErrorBanner.qml</file>
+        <file>qml/components/ProcessingOverlay.qml</file>
+        <file>qml/components/RecentProjectsList.qml</file>
+        <file>qml/dialogs/CoordinateConverterDialog.qml</file>
+    </qresource>
+</RCC>
